@@ -32,7 +32,7 @@ sequenceDiagram
     | Workflow type (`WF_TYPE`) | Pending row | Waiting state |
     |---|---|---|
     | `AM_APPLICATION_CREATION` | `AM_APPLICATION` | `APPLICATION_STATUS = 'CREATED'` |
-    | `AM_APPLICATION_DELETION` | `AM_APPLICATION` | kept until approved |
+    | `AM_APPLICATION_DELETION` | `AM_APPLICATION` | none: 3.2.0 ships only an auto-approve executor for this type, so the app is deleted straight away |
     | `AM_SUBSCRIPTION_CREATION` | `AM_SUBSCRIPTION` | `SUB_STATUS = 'ON_HOLD'` |
     | `AM_SUBSCRIPTION_UPDATE` | `AM_SUBSCRIPTION` | `SUB_STATUS = 'TIER_UPDATE_PENDING'`, `TIER_ID_PENDING` set |
     | `AM_SUBSCRIPTION_DELETION` | `AM_SUBSCRIPTION` | `SUBS_CREATE_STATE = 'UN_SUBSCRIBE'` |

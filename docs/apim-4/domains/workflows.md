@@ -22,6 +22,8 @@ The same pattern works for many actions. `WF_TYPE` says which one, and `WF_REFER
 | `AM_REVISION_DEPLOYMENT` | The revision deployment request |
 | `AM_USER_SIGNUP` | The user who signed up |
 
+*These `WF_TYPE` values match the workflow constants in the 4.7.0 code (`WorkflowConstants`). The code also defines `AM_COMMENTS_ADD`, but no workflow executor ships for it, so it never appears in practice.*
+
 ## How the tables connect
 
 APIM's approval tracking:

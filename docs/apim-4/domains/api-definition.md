@@ -72,7 +72,7 @@ erDiagram
 | `INITIATED_FROM_GW`, `IS_EGRESS` | Flags for APIs discovered from a federated gateway, and for egress (outbound) APIs. |
 | `LOG_LEVEL`, `API_DISPLAY_NAME`, `VERSION_COMPARABLE` | Per-API logging, the display name, and a sortable version string. |
 
-**Connects to:** almost everything. Older tables point to it by the integer `API_ID` (subscriptions, URL mappings, lifecycle events, comments). Newer 4.x tables point to it by `API_UUID` (revisions, endpoints, operation policies, labels, AI configuration). The FKs usually cascade on delete. A few are RESTRICT, e.g. `AM_EXTERNAL_STORES`.
+**Connects to:** almost everything. Older tables point to it by the integer `API_ID` (subscriptions, URL mappings, lifecycle events, comments). Newer 4.x tables point to it by `API_UUID` (revisions, endpoints, operation policies, labels, AI configuration). Of the 23 declared FKs into `AM_API`, 18 cascade on delete. `AM_EXTERNAL_STORES` is RESTRICT. Four have no ON DELETE rule, which also blocks the delete: `AM_API_AI_CONFIGURATION`, `AM_API_KEY_API_MAPPING`, `AM_API_METADATA` and `AM_BACKEND`. APIM's code removes those rows first.
 
 **Watch out:** the full description, tags, visibility, business owner and the OpenAPI definition are **not** here. They're in the [registry](registry.md).
 
@@ -92,7 +92,7 @@ erDiagram
 | `REVISION_UUID` | NULL for the current API, otherwise the revision this copy belongs to. |
 | `MEDIATION_SCRIPT`, `DESCRIPTION`, `SCHEMA_DEFINITION`, `LOG_LEVEL` | An optional script, a description, a schema (used by MCP tools, for example) and per-resource logging. |
 
-**Connects to:** [`AM_API_RESOURCE_SCOPE_MAPPING`](scopes.md#am_api_resource_scope_mapping), [`AM_API_OPERATION_POLICY_MAPPING`](operation-policies.md#am_api_operation_policy_mapping), [`AM_API_PRODUCT_MAPPING`](api-products.md#am_api_product_mapping) and the MCP tables [`AM_API_OPERATION_MAPPING`](ai-apis.md#am_api_operation_mapping) and [`AM_BACKEND_OPERATION_MAPPING`](ai-apis.md#am_backend_operation_mapping). Most of those FKs cascade when a URL mapping is deleted.
+**Connects to:** [`AM_API_RESOURCE_SCOPE_MAPPING`](scopes.md#am_api_resource_scope_mapping), [`AM_API_OPERATION_POLICY_MAPPING`](operation-policies.md#am_api_operation_policy_mapping), [`AM_API_PRODUCT_MAPPING`](api-products.md#am_api_product_mapping) and the MCP tables [`AM_API_OPERATION_MAPPING`](ai-apis.md#am_api_operation_mapping) and [`AM_BACKEND_OPERATION_MAPPING`](ai-apis.md#am_backend_operation_mapping). The scope, operation-policy and product mappings cascade when a URL mapping is deleted. The two MCP tables have no ON DELETE rule, so their rows must be removed first.
 
 **Watch out:** creating a revision **copies** every resource row, and each copy gets a new `URL_MAPPING_ID`. To get only the editable resources, filter with `REVISION_UUID IS NULL`.
 

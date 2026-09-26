@@ -62,7 +62,7 @@ sequenceDiagram
 | `AM_REVISION_DEPLOYMENT` | Deploy a revision | the revision | `AM_DEPLOYMENT_REVISION_MAPPING.REVISION_STATUS` |
 | `AM_USER_SIGNUP` | Self sign-up | the username | user account state |
 
-*The `WF_TYPE` values come from APIM's workflow constants. They're not defined in the database scripts, so check them against your version's documentation.*
+*These `WF_TYPE` values match the workflow constants in the 4.7.0 code (`WorkflowConstants`). The code also defines `AM_COMMENTS_ADD`, but no workflow executor ships for it, so it never appears in practice.*
 
 !!! warning "Logical link (no foreign key)"
     `WF_REFERENCE` is a plain string that holds a number, a UUID or a username, depending on `WF_TYPE`. Deleting the gated row doesn't delete the workflow row. APIM's code cleans up pending ones.

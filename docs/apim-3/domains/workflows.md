@@ -25,6 +25,8 @@ The **workflow type** (`WF_TYPE`) decides what `WF_REFERENCE` points to:
 | `AM_USER_SIGNUP` | the new user's name |
 | `AM_API_STATE` | the API (lifecycle change) |
 
+*These `WF_TYPE` values match the workflow constants in the 3.2.0 code. The code also defines `AM_COMMENTS_ADD`, but no workflow executor ships for it. 3.2.0 has no approval executor for application deletion either: that step only has a "simple" (auto-approve) executor.*
+
 The `WF_*` tables belong to the embedded Identity Server workflow engine, which handles user and role operations. They're used when APIM is connected to a WSO2 Business Process Server (BPS). Out of the box they're mostly empty.
 
 ## How the tables connect

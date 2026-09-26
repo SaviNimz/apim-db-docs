@@ -52,7 +52,7 @@ erDiagram
 | `UM_ACTIVE` | Whether the tenant is enabled. |
 | `UM_USER_CONFIG` | The tenant's user-store configuration (blob). |
 
-**Connects to:** every `TENANT_ID` / `UM_TENANT_ID` column in both databases. These are *logical links (no FK)*.
+**Connects to:** every `TENANT_ID` / `UM_TENANT_ID` column in both databases. These are *logical links (no FK)*. The one exception is `UM_ACCOUNT_MAPPING`, which has a real FK to `UM_TENANT`.
 
 **Watch out:** the super tenant (`carbon.super`, `-1234`) has **no row** here, so joins to `UM_TENANT` drop super-tenant data unless you use an outer join.
 
