@@ -1,0 +1,943 @@
+# AM_* — API Manager core
+
+57 tables. Generated from the 3.2.0 DDL.
+
+## AM_ALERT_EMAILLIST
+
+*APIM DB (WSO2AM_DB)* · PK: `EMAIL_LIST_ID, USER_NAME, STAKE_HOLDER`
+
+| Column | Type | Notes |
+|---|---|---|
+| `EMAIL_LIST_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `USER_NAME` | `VARCHAR(255)` | PK · NOT NULL |
+| `STAKE_HOLDER` | `VARCHAR(100)` | PK · NOT NULL |
+
+## AM_ALERT_EMAILLIST_DETAILS
+
+*APIM DB (WSO2AM_DB)* · PK: `EMAIL_LIST_ID, EMAIL`
+
+| Column | Type | Notes |
+|---|---|---|
+| `EMAIL_LIST_ID` | `INTEGER` | PK |
+| `EMAIL` | `VARCHAR(255)` | PK |
+
+## AM_ALERT_TYPES
+
+*APIM DB (WSO2AM_DB)* · PK: `ALERT_TYPE_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `ALERT_TYPE_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `ALERT_TYPE_NAME` | `VARCHAR(255)` | NOT NULL |
+| `STAKE_HOLDER` | `VARCHAR(100)` | NOT NULL |
+
+## AM_ALERT_TYPES_VALUES
+
+*APIM DB (WSO2AM_DB)* · PK: `ALERT_TYPE_ID, USER_NAME, STAKE_HOLDER`
+
+| Column | Type | Notes |
+|---|---|---|
+| `ALERT_TYPE_ID` | `INTEGER` | PK |
+| `USER_NAME` | `VARCHAR(255)` | PK · NOT NULL |
+| `STAKE_HOLDER` | `VARCHAR(100)` | PK · NOT NULL |
+
+## AM_API
+
+*APIM DB (WSO2AM_DB)* · PK: `API_ID` · Unique: `API_PROVIDER, API_NAME, API_VERSION`
+
+| Column | Type | Notes |
+|---|---|---|
+| `API_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `API_PROVIDER` | `VARCHAR(200)` |  |
+| `API_NAME` | `VARCHAR(200)` |  |
+| `API_VERSION` | `VARCHAR(30)` |  |
+| `CONTEXT` | `VARCHAR(256)` |  |
+| `CONTEXT_TEMPLATE` | `VARCHAR(256)` |  |
+| `API_TIER` | `VARCHAR(256)` |  |
+| `API_TYPE` | `VARCHAR(10)` |  |
+| `CREATED_BY` | `VARCHAR(100)` |  |
+| `CREATED_TIME` | `TIMESTAMP` |  |
+| `UPDATED_BY` | `VARCHAR(100)` |  |
+| `UPDATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+
+**Referenced by**
+
+- [`AM_API_CLIENT_CERTIFICATE`](#am_api_client_certificate) via `API_ID`
+- [`AM_API_COMMENTS`](#am_api_comments) via `API_ID`
+- [`AM_API_LC_EVENT`](#am_api_lc_event) via `API_ID`
+- [`AM_API_PRODUCT_MAPPING`](#am_api_product_mapping) via `API_ID`
+- [`AM_API_RATINGS`](#am_api_ratings) via `API_ID`
+- [`AM_EXTERNAL_STORES`](#am_external_stores) via `API_ID`
+- [`AM_GRAPHQL_COMPLEXITY`](#am_graphql_complexity) via `API_ID`
+- [`AM_SECURITY_AUDIT_UUID_MAPPING`](#am_security_audit_uuid_mapping) via `API_ID`
+- [`AM_SUBSCRIPTION`](#am_subscription) via `API_ID`
+
+## AM_API_CATEGORIES
+
+*APIM DB (WSO2AM_DB)* · PK: `UUID` · Unique: `NAME, TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `UUID` | `VARCHAR(50)` | PK |
+| `NAME` | `VARCHAR(255)` |  |
+| `DESCRIPTION` | `VARCHAR(1024)` |  |
+| `TENANT_ID` | `INTEGER` | DEFAULT -1 |
+
+## AM_API_CLIENT_CERTIFICATE
+
+*APIM DB (WSO2AM_DB)* · PK: `ALIAS, TENANT_ID, REMOVED`
+
+| Column | Type | Notes |
+|---|---|---|
+| `TENANT_ID` | `INT(11)` | PK · NOT NULL |
+| `ALIAS` | `VARCHAR(45)` | PK · NOT NULL |
+| `API_ID` | `INTEGER` | FK → AM_API · NOT NULL |
+| `CERTIFICATE` | `BLOB` | NOT NULL |
+| `REMOVED` | `BOOLEAN` | PK · NOT NULL DEFAULT 0 |
+| `TIER_NAME` | `VARCHAR (512)` |  |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: CASCADE)
+
+## AM_API_COMMENTS
+
+*APIM DB (WSO2AM_DB)* · PK: `COMMENT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `COMMENT_ID` | `VARCHAR(255)` | PK · NOT NULL |
+| `COMMENT_TEXT` | `VARCHAR(512)` |  |
+| `COMMENTED_USER` | `VARCHAR(255)` |  |
+| `DATE_COMMENTED` | `TIMESTAMP` | NOT NULL |
+| `API_ID` | `INTEGER` | FK → AM_API |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: RESTRICT)
+
+## AM_API_DEFAULT_VERSION
+
+*APIM DB (WSO2AM_DB)* · PK: `DEFAULT_VERSION_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `DEFAULT_VERSION_ID` | `INT` | PK · AUTO_INCREMENT |
+| `API_NAME` | `VARCHAR(256)` | NOT NULL |
+| `API_PROVIDER` | `VARCHAR(256)` | NOT NULL |
+| `DEFAULT_API_VERSION` | `VARCHAR(30)` |  |
+| `PUBLISHED_DEFAULT_API_VERSION` | `VARCHAR(30)` |  |
+
+## AM_API_LC_EVENT
+
+*APIM DB (WSO2AM_DB)* · PK: `EVENT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `EVENT_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `API_ID` | `INTEGER` | FK → AM_API · NOT NULL |
+| `PREVIOUS_STATE` | `VARCHAR(50)` |  |
+| `NEW_STATE` | `VARCHAR(50)` | NOT NULL |
+| `USER_ID` | `VARCHAR(255)` | NOT NULL |
+| `TENANT_ID` | `INTEGER` | NOT NULL |
+| `EVENT_DATE` | `TIMESTAMP` | NOT NULL |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: RESTRICT)
+
+## AM_API_LC_PUBLISH_EVENTS
+
+*APIM DB (WSO2AM_DB)* · PK: `ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `ID` | `INTEGER(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `TENANT_DOMAIN` | `VARCHAR(500)` | NOT NULL |
+| `API_ID` | `VARCHAR(500)` | NOT NULL |
+| `EVENT_TIME` | `TIMESTAMP` | NOT NULL |
+
+**Likely links (no FK)**
+
+- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+
+## AM_API_PRODUCT_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `API_PRODUCT_MAPPING_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `API_PRODUCT_MAPPING_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `API_ID` | `INTEGER` | FK → AM_API |
+| `URL_MAPPING_ID` | `INTEGER` | FK → AM_API_URL_MAPPING |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: CASCADE)
+- `URL_MAPPING_ID` → [`AM_API_URL_MAPPING`](#am_api_url_mapping) `URL_MAPPING_ID` (on delete: CASCADE)
+
+## AM_API_RATINGS
+
+*APIM DB (WSO2AM_DB)* · PK: `RATING_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `RATING_ID` | `VARCHAR(255)` | PK · NOT NULL |
+| `API_ID` | `INTEGER` | FK → AM_API |
+| `RATING` | `INTEGER` |  |
+| `SUBSCRIBER_ID` | `INTEGER` | FK → AM_SUBSCRIBER |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: RESTRICT)
+- `SUBSCRIBER_ID` → [`AM_SUBSCRIBER`](#am_subscriber) `SUBSCRIBER_ID` (on delete: RESTRICT)
+
+## AM_API_RESOURCE_SCOPE_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `SCOPE_NAME, URL_MAPPING_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `SCOPE_NAME` | `VARCHAR(255)` | PK · NOT NULL |
+| `URL_MAPPING_ID` | `INTEGER` | PK · FK → AM_API_URL_MAPPING · NOT NULL |
+| `TENANT_ID` | `INTEGER` | NOT NULL |
+
+**Foreign keys**
+
+- `URL_MAPPING_ID` → [`AM_API_URL_MAPPING`](#am_api_url_mapping) `URL_MAPPING_ID` (on delete: CASCADE)
+
+## AM_API_THROTTLE_POLICY
+
+*APIM DB (WSO2AM_DB)* · PK: `POLICY_ID` · Unique: `NAME, TENANT_ID`; `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `POLICY_ID` | `INT(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `NAME` | `VARCHAR(512)` | NOT NULL |
+| `DISPLAY_NAME` | `VARCHAR(512)` | NULL DEFAULT NULL |
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR (1024)` |  |
+| `DEFAULT_QUOTA_TYPE` | `VARCHAR(25)` | NOT NULL |
+| `DEFAULT_QUOTA` | `INTEGER` | NOT NULL |
+| `DEFAULT_QUOTA_UNIT` | `VARCHAR(10)` | NULL |
+| `DEFAULT_UNIT_TIME` | `INTEGER` | NOT NULL |
+| `DEFAULT_TIME_UNIT` | `VARCHAR(25)` | NOT NULL |
+| `APPLICABLE_LEVEL` | `VARCHAR(25)` | NOT NULL |
+| `IS_DEPLOYED` | `TINYINT(1)` | NOT NULL DEFAULT 0 |
+| `UUID` | `VARCHAR(256)` |  |
+
+**Referenced by**
+
+- [`AM_CONDITION_GROUP`](#am_condition_group) via `POLICY_ID`
+
+## AM_API_URL_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `URL_MAPPING_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `URL_MAPPING_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `API_ID` | `INTEGER` | NOT NULL |
+| `HTTP_METHOD` | `VARCHAR(20)` | NULL |
+| `AUTH_SCHEME` | `VARCHAR(50)` | NULL |
+| `URL_PATTERN` | `VARCHAR(512)` | NULL |
+| `THROTTLING_TIER` | `VARCHAR(512)` | DEFAULT NULL |
+| `MEDIATION_SCRIPT` | `BLOB` |  |
+
+**Referenced by**
+
+- [`AM_API_PRODUCT_MAPPING`](#am_api_product_mapping) via `URL_MAPPING_ID`
+- [`AM_API_RESOURCE_SCOPE_MAPPING`](#am_api_resource_scope_mapping) via `URL_MAPPING_ID`
+
+**Likely links (no FK)**
+
+- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+
+## AM_APPLICATION
+
+*APIM DB (WSO2AM_DB)* · PK: `APPLICATION_ID` · Unique: `NAME, SUBSCRIBER_ID`; `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `APPLICATION_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `NAME` | `VARCHAR(100)` |  |
+| `SUBSCRIBER_ID` | `INTEGER` | FK → AM_SUBSCRIBER |
+| `APPLICATION_TIER` | `VARCHAR(50)` | DEFAULT 'Unlimited' |
+| `CALLBACK_URL` | `VARCHAR(512)` |  |
+| `DESCRIPTION` | `VARCHAR(512)` |  |
+| `APPLICATION_STATUS` | `VARCHAR(50)` | DEFAULT 'APPROVED' |
+| `GROUP_ID` | `VARCHAR(100)` |  |
+| `CREATED_BY` | `VARCHAR(100)` |  |
+| `CREATED_TIME` | `TIMESTAMP` |  |
+| `UPDATED_BY` | `VARCHAR(100)` |  |
+| `UPDATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+| `UUID` | `VARCHAR(256)` |  |
+| `TOKEN_TYPE` | `VARCHAR(10)` |  |
+
+**Foreign keys**
+
+- `SUBSCRIBER_ID` → [`AM_SUBSCRIBER`](#am_subscriber) `SUBSCRIBER_ID` (on delete: RESTRICT)
+
+**Referenced by**
+
+- [`AM_APPLICATION_ATTRIBUTES`](#am_application_attributes) via `APPLICATION_ID`
+- [`AM_APPLICATION_GROUP_MAPPING`](#am_application_group_mapping) via `APPLICATION_ID`
+- [`AM_APPLICATION_KEY_MAPPING`](#am_application_key_mapping) via `APPLICATION_ID`
+- [`AM_APPLICATION_REGISTRATION`](#am_application_registration) via `APP_ID`
+- [`AM_SUBSCRIPTION`](#am_subscription) via `APPLICATION_ID`
+
+**Likely links (no FK)**
+
+- `GROUP_ID` → [`AM_APPLICATION_GROUP_MAPPING`](#am_application_group_mapping) *(same-name key)*
+
+## AM_APPLICATION_ATTRIBUTES
+
+*APIM DB (WSO2AM_DB)* · PK: `APPLICATION_ID, NAME`
+
+| Column | Type | Notes |
+|---|---|---|
+| `APPLICATION_ID` | `INT(11)` | PK · FK → AM_APPLICATION · NOT NULL |
+| `NAME` | `VARCHAR(255)` | PK · NOT NULL |
+| `VALUE` | `VARCHAR(1024)` | NOT NULL |
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+
+**Foreign keys**
+
+- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: CASCADE)
+
+## AM_APPLICATION_GROUP_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `APPLICATION_ID, GROUP_ID, TENANT`
+
+| Column | Type | Notes |
+|---|---|---|
+| `APPLICATION_ID` | `INTEGER` | PK · FK → AM_APPLICATION · NOT NULL |
+| `GROUP_ID` | `VARCHAR(512)` | PK · NOT NULL |
+| `TENANT` | `VARCHAR(255)` | PK |
+
+**Foreign keys**
+
+- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: CASCADE)
+
+## AM_APPLICATION_KEY_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `APPLICATION_ID, KEY_TYPE, KEY_MANAGER`
+
+| Column | Type | Notes |
+|---|---|---|
+| `UUID` | `VARCHAR(100)` |  |
+| `APPLICATION_ID` | `INTEGER` | PK · FK → AM_APPLICATION |
+| `CONSUMER_KEY` | `VARCHAR(255)` |  |
+| `KEY_TYPE` | `VARCHAR(512)` | PK · NOT NULL |
+| `STATE` | `VARCHAR(30)` | NOT NULL |
+| `CREATE_MODE` | `VARCHAR(30)` | DEFAULT 'CREATED' |
+| `KEY_MANAGER` | `VARCHAR(100)` | PK |
+| `APP_INFO` | `BLOB` |  |
+
+**Foreign keys**
+
+- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: RESTRICT)
+
+**Likely links (no FK)**
+
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager) *(name-hint)*
+
+## AM_APPLICATION_REGISTRATION
+
+*APIM DB (WSO2AM_DB)* · PK: `REG_ID` · Unique: `SUBSCRIBER_ID, APP_ID, TOKEN_TYPE, KEY_MANAGER`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_ID` | `INT` | PK · AUTO_INCREMENT |
+| `SUBSCRIBER_ID` | `INT` | FK → AM_SUBSCRIBER |
+| `WF_REF` | `VARCHAR(255)` | NOT NULL |
+| `APP_ID` | `INT` | FK → AM_APPLICATION |
+| `TOKEN_TYPE` | `VARCHAR(30)` |  |
+| `TOKEN_SCOPE` | `VARCHAR(1500)` | DEFAULT 'default' |
+| `INPUTS` | `VARCHAR(1000)` |  |
+| `ALLOWED_DOMAINS` | `VARCHAR(256)` |  |
+| `VALIDITY_PERIOD` | `BIGINT` |  |
+| `KEY_MANAGER` | `VARCHAR(255)` | NOT NULL |
+
+**Foreign keys**
+
+- `SUBSCRIBER_ID` → [`AM_SUBSCRIBER`](#am_subscriber) `SUBSCRIBER_ID` (on delete: RESTRICT)
+- `APP_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: RESTRICT)
+
+**Likely links (no FK)**
+
+- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager) *(name-hint)*
+
+## AM_APP_KEY_DOMAIN_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `CONSUMER_KEY, AUTHZ_DOMAIN`
+
+| Column | Type | Notes |
+|---|---|---|
+| `CONSUMER_KEY` | `VARCHAR(255)` | PK |
+| `AUTHZ_DOMAIN` | `VARCHAR(255)` | PK · DEFAULT 'ALL' |
+
+**Likely links (no FK)**
+
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+
+## AM_BLOCK_CONDITIONS
+
+*APIM DB (WSO2AM_DB)* · PK: `CONDITION_ID` · Unique: `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `CONDITION_ID` | `INT(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `TYPE` | `VARCHAR(45)` | DEFAULT NULL |
+| `VALUE` | `VARCHAR(512)` | DEFAULT NULL |
+| `ENABLED` | `VARCHAR(45)` | DEFAULT NULL |
+| `DOMAIN` | `VARCHAR(45)` | DEFAULT NULL |
+| `UUID` | `VARCHAR(256)` |  |
+
+## AM_CERTIFICATE_METADATA
+
+*APIM DB (WSO2AM_DB)* · PK: `ALIAS`
+
+| Column | Type | Notes |
+|---|---|---|
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+| `ALIAS` | `VARCHAR(255)` | PK · NOT NULL |
+| `END_POINT` | `VARCHAR(255)` | NOT NULL |
+
+## AM_CONDITION_GROUP
+
+*APIM DB (WSO2AM_DB)* · PK: `CONDITION_GROUP_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `CONDITION_GROUP_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `POLICY_ID` | `INTEGER` | FK → AM_API_THROTTLE_POLICY · NOT NULL |
+| `QUOTA_TYPE` | `VARCHAR(25)` |  |
+| `QUOTA` | `INTEGER` | NOT NULL |
+| `QUOTA_UNIT` | `VARCHAR(10)` | NULL DEFAULT NULL |
+| `UNIT_TIME` | `INTEGER` | NOT NULL |
+| `TIME_UNIT` | `VARCHAR(25)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR (1024)` | NULL DEFAULT NULL |
+
+**Foreign keys**
+
+- `POLICY_ID` → [`AM_API_THROTTLE_POLICY`](#am_api_throttle_policy) `POLICY_ID` (on delete: CASCADE)
+
+**Referenced by**
+
+- [`AM_HEADER_FIELD_CONDITION`](#am_header_field_condition) via `CONDITION_GROUP_ID`
+- [`AM_IP_CONDITION`](#am_ip_condition) via `CONDITION_GROUP_ID`
+- [`AM_JWT_CLAIM_CONDITION`](#am_jwt_claim_condition) via `CONDITION_GROUP_ID`
+- [`AM_QUERY_PARAMETER_CONDITION`](#am_query_parameter_condition) via `CONDITION_GROUP_ID`
+
+## AM_EXTERNAL_STORES
+
+*APIM DB (WSO2AM_DB)* · PK: `APISTORE_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `APISTORE_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `API_ID` | `INTEGER` | FK → AM_API |
+| `STORE_ID` | `VARCHAR(255)` | NOT NULL |
+| `STORE_DISPLAY_NAME` | `VARCHAR(255)` | NOT NULL |
+| `STORE_ENDPOINT` | `VARCHAR(255)` | NOT NULL |
+| `STORE_TYPE` | `VARCHAR(255)` | NOT NULL |
+| `LAST_UPDATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: RESTRICT)
+
+## AM_GRAPHQL_COMPLEXITY
+
+*APIM DB (WSO2AM_DB)* · PK: `UUID` · Unique: `API_ID, TYPE, FIELD`
+
+| Column | Type | Notes |
+|---|---|---|
+| `UUID` | `VARCHAR(256)` | PK |
+| `API_ID` | `INTEGER` | FK → AM_API · NOT NULL |
+| `TYPE` | `VARCHAR(256)` |  |
+| `FIELD` | `VARCHAR(256)` |  |
+| `COMPLEXITY_VALUE` | `INTEGER` |  |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: CASCADE)
+
+## AM_GW_API_ARTIFACTS
+
+*APIM DB (WSO2AM_DB)* · PK: `GATEWAY_LABEL, API_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `API_ID` | `VARCHAR(255)` | PK · FK → AM_GW_PUBLISHED_API_DETAILS · NOT NULL |
+| `ARTIFACT` | `LONGBLOB` |  |
+| `GATEWAY_INSTRUCTION` | `VARCHAR(20)` |  |
+| `GATEWAY_LABEL` | `VARCHAR(255)` | PK |
+| `TIME_STAMP` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_GW_PUBLISHED_API_DETAILS`](#am_gw_published_api_details) `API_ID` (on delete: NO ACTION)
+
+## AM_GW_PUBLISHED_API_DETAILS
+
+*APIM DB (WSO2AM_DB)* · PK: `API_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `API_ID` | `VARCHAR(255)` | PK · NOT NULL |
+| `TENANT_DOMAIN` | `VARCHAR(255)` |  |
+| `API_PROVIDER` | `VARCHAR(255)` |  |
+| `API_NAME` | `VARCHAR(255)` |  |
+| `API_VERSION` | `VARCHAR(255)` |  |
+
+**Referenced by**
+
+- [`AM_GW_API_ARTIFACTS`](#am_gw_api_artifacts) via `API_ID`
+
+**Likely links (no FK)**
+
+- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+
+## AM_HEADER_FIELD_CONDITION
+
+*APIM DB (WSO2AM_DB)* · PK: `HEADER_FIELD_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `HEADER_FIELD_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `CONDITION_GROUP_ID` | `INTEGER` | FK → AM_CONDITION_GROUP · NOT NULL |
+| `HEADER_FIELD_NAME` | `VARCHAR(255)` | DEFAULT NULL |
+| `HEADER_FIELD_VALUE` | `VARCHAR(255)` | DEFAULT NULL |
+| `IS_HEADER_FIELD_MAPPING` | `BOOLEAN` | DEFAULT 1 |
+
+**Foreign keys**
+
+- `CONDITION_GROUP_ID` → [`AM_CONDITION_GROUP`](#am_condition_group) `CONDITION_GROUP_ID` (on delete: CASCADE)
+
+## AM_IP_CONDITION
+
+*APIM DB (WSO2AM_DB)* · PK: `AM_IP_CONDITION_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `AM_IP_CONDITION_ID` | `INT` | PK · NOT NULL AUTO_INCREMENT |
+| `STARTING_IP` | `VARCHAR(45)` | NULL |
+| `ENDING_IP` | `VARCHAR(45)` | NULL |
+| `SPECIFIC_IP` | `VARCHAR(45)` | NULL |
+| `WITHIN_IP_RANGE` | `BOOLEAN` | DEFAULT 1 |
+| `CONDITION_GROUP_ID` | `INT` | FK → AM_CONDITION_GROUP · NULL |
+
+**Foreign keys**
+
+- `CONDITION_GROUP_ID` → [`AM_CONDITION_GROUP`](#am_condition_group) `CONDITION_GROUP_ID` (on delete: CASCADE)
+
+## AM_JWT_CLAIM_CONDITION
+
+*APIM DB (WSO2AM_DB)* · PK: `JWT_CLAIM_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `JWT_CLAIM_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `CONDITION_GROUP_ID` | `INTEGER` | FK → AM_CONDITION_GROUP · NOT NULL |
+| `CLAIM_URI` | `VARCHAR(512)` | DEFAULT NULL |
+| `CLAIM_ATTRIB` | `VARCHAR(1024)` | DEFAULT NULL |
+| `IS_CLAIM_MAPPING` | `BOOLEAN` | DEFAULT 1 |
+
+**Foreign keys**
+
+- `CONDITION_GROUP_ID` → [`AM_CONDITION_GROUP`](#am_condition_group) `CONDITION_GROUP_ID` (on delete: CASCADE)
+
+## AM_KEY_MANAGER
+
+*APIM DB (WSO2AM_DB)* · PK: `UUID` · Unique: `NAME, TENANT_DOMAIN`
+
+| Column | Type | Notes |
+|---|---|---|
+| `UUID` | `VARCHAR(50)` | PK · NOT NULL |
+| `NAME` | `VARCHAR(100)` | NULL |
+| `DISPLAY_NAME` | `VARCHAR(100)` | NULL |
+| `DESCRIPTION` | `VARCHAR(256)` | NULL |
+| `TYPE` | `VARCHAR(45)` | NULL |
+| `CONFIGURATION` | `BLOB` | NULL |
+| `ENABLED` | `BOOLEAN` | DEFAULT 1 |
+| `TENANT_DOMAIN` | `VARCHAR(100)` | NULL |
+
+## AM_LABELS
+
+*APIM DB (WSO2AM_DB)* · PK: `LABEL_ID` · Unique: `NAME, TENANT_DOMAIN`
+
+| Column | Type | Notes |
+|---|---|---|
+| `LABEL_ID` | `VARCHAR(50)` | PK |
+| `NAME` | `VARCHAR(255)` |  |
+| `DESCRIPTION` | `VARCHAR(1024)` |  |
+| `TENANT_DOMAIN` | `VARCHAR(255)` |  |
+
+**Referenced by**
+
+- [`AM_LABEL_URLS`](#am_label_urls) via `LABEL_ID`
+
+## AM_LABEL_URLS
+
+*APIM DB (WSO2AM_DB)* · PK: `LABEL_ID, ACCESS_URL`
+
+| Column | Type | Notes |
+|---|---|---|
+| `LABEL_ID` | `VARCHAR(50)` | PK · FK → AM_LABELS |
+| `ACCESS_URL` | `VARCHAR(255)` | PK |
+
+**Foreign keys**
+
+- `LABEL_ID` → [`AM_LABELS`](#am_labels) `LABEL_ID` (on delete: CASCADE)
+
+## AM_MONETIZATION_USAGE
+
+*APIM DB (WSO2AM_DB)* · PK: `ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `ID` | `VARCHAR(100)` | PK · NOT NULL |
+| `STATE` | `VARCHAR(50)` | NOT NULL |
+| `STATUS` | `VARCHAR(50)` | NOT NULL |
+| `STARTED_TIME` | `VARCHAR(50)` | NOT NULL |
+| `PUBLISHED_TIME` | `VARCHAR(50)` | NOT NULL |
+
+## AM_NOTIFICATION_SUBSCRIBER
+
+*APIM DB (WSO2AM_DB)* · PK: `UUID, SUBSCRIBER_ADDRESS`
+
+| Column | Type | Notes |
+|---|---|---|
+| `UUID` | `VARCHAR(255)` | PK |
+| `CATEGORY` | `VARCHAR(255)` |  |
+| `NOTIFICATION_METHOD` | `VARCHAR(255)` |  |
+| `SUBSCRIBER_ADDRESS` | `VARCHAR(255)` | PK · NOT NULL |
+
+## AM_POLICY_APPLICATION
+
+*APIM DB (WSO2AM_DB)* · PK: `POLICY_ID` · Unique: `NAME, TENANT_ID`; `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `POLICY_ID` | `INT(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `NAME` | `VARCHAR(512)` | NOT NULL |
+| `DISPLAY_NAME` | `VARCHAR(512)` | NULL DEFAULT NULL |
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR(1024)` | NULL DEFAULT NULL |
+| `QUOTA_TYPE` | `VARCHAR(25)` | NOT NULL |
+| `QUOTA` | `INT(11)` | NOT NULL |
+| `QUOTA_UNIT` | `VARCHAR(10)` | NULL DEFAULT NULL |
+| `UNIT_TIME` | `INT(11)` | NOT NULL |
+| `TIME_UNIT` | `VARCHAR(25)` | NOT NULL |
+| `IS_DEPLOYED` | `TINYINT(1)` | NOT NULL DEFAULT 0 |
+| `CUSTOM_ATTRIBUTES` | `BLOB` | DEFAULT NULL |
+| `UUID` | `VARCHAR(256)` |  |
+
+## AM_POLICY_GLOBAL
+
+*APIM DB (WSO2AM_DB)* · PK: `POLICY_ID` · Unique: `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `POLICY_ID` | `INT(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `NAME` | `VARCHAR(512)` | NOT NULL |
+| `KEY_TEMPLATE` | `VARCHAR(512)` | NOT NULL |
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR(1024)` | NULL DEFAULT NULL |
+| `SIDDHI_QUERY` | `BLOB` | DEFAULT NULL |
+| `IS_DEPLOYED` | `TINYINT(1)` | NOT NULL DEFAULT 0 |
+| `UUID` | `VARCHAR(256)` |  |
+
+## AM_POLICY_HARD_THROTTLING
+
+*APIM DB (WSO2AM_DB)* · PK: `POLICY_ID` · Unique: `NAME, TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `POLICY_ID` | `INT(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `NAME` | `VARCHAR(512)` | NOT NULL |
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR(1024)` | NULL DEFAULT NULL |
+| `QUOTA_TYPE` | `VARCHAR(25)` | NOT NULL |
+| `QUOTA` | `INT(11)` | NOT NULL |
+| `QUOTA_UNIT` | `VARCHAR(10)` | NULL DEFAULT NULL |
+| `UNIT_TIME` | `INT(11)` | NOT NULL |
+| `TIME_UNIT` | `VARCHAR(25)` | NOT NULL |
+| `IS_DEPLOYED` | `TINYINT(1)` | NOT NULL DEFAULT 0 |
+
+## AM_POLICY_SUBSCRIPTION
+
+*APIM DB (WSO2AM_DB)* · PK: `POLICY_ID` · Unique: `NAME, TENANT_ID`; `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `POLICY_ID` | `INT(11)` | PK · NOT NULL AUTO_INCREMENT |
+| `NAME` | `VARCHAR(512)` | NOT NULL |
+| `DISPLAY_NAME` | `VARCHAR(512)` | NULL DEFAULT NULL |
+| `TENANT_ID` | `INT(11)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR(1024)` | NULL DEFAULT NULL |
+| `QUOTA_TYPE` | `VARCHAR(25)` | NOT NULL |
+| `QUOTA` | `INT(11)` | NOT NULL |
+| `QUOTA_UNIT` | `VARCHAR(10)` | NULL |
+| `UNIT_TIME` | `INT(11)` | NOT NULL |
+| `TIME_UNIT` | `VARCHAR(25)` | NOT NULL |
+| `RATE_LIMIT_COUNT` | `INT(11)` | NULL DEFAULT NULL |
+| `RATE_LIMIT_TIME_UNIT` | `VARCHAR(25)` | NULL DEFAULT NULL |
+| `IS_DEPLOYED` | `TINYINT(1)` | NOT NULL DEFAULT 0 |
+| `CUSTOM_ATTRIBUTES` | `BLOB` | DEFAULT NULL |
+| `STOP_ON_QUOTA_REACH` | `BOOLEAN` | NOT NULL DEFAULT 0 |
+| `BILLING_PLAN` | `VARCHAR(20)` | NOT NULL |
+| `UUID` | `VARCHAR(256)` |  |
+| `MONETIZATION_PLAN` | `VARCHAR(25)` | NULL DEFAULT NULL |
+| `FIXED_RATE` | `VARCHAR(15)` | NULL DEFAULT NULL |
+| `BILLING_CYCLE` | `VARCHAR(15)` | NULL DEFAULT NULL |
+| `PRICE_PER_REQUEST` | `VARCHAR(15)` | NULL DEFAULT NULL |
+| `CURRENCY` | `VARCHAR(15)` | NULL DEFAULT NULL |
+| `MAX_COMPLEXITY` | `INT(11)` | NOT NULL DEFAULT 0 |
+| `MAX_DEPTH` | `INT(11)` | NOT NULL DEFAULT 0 |
+
+## AM_QUERY_PARAMETER_CONDITION
+
+*APIM DB (WSO2AM_DB)* · PK: `QUERY_PARAMETER_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `QUERY_PARAMETER_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `CONDITION_GROUP_ID` | `INTEGER` | FK → AM_CONDITION_GROUP · NOT NULL |
+| `PARAMETER_NAME` | `VARCHAR(255)` | DEFAULT NULL |
+| `PARAMETER_VALUE` | `VARCHAR(255)` | DEFAULT NULL |
+| `IS_PARAM_MAPPING` | `BOOLEAN` | DEFAULT 1 |
+
+**Foreign keys**
+
+- `CONDITION_GROUP_ID` → [`AM_CONDITION_GROUP`](#am_condition_group) `CONDITION_GROUP_ID` (on delete: CASCADE)
+
+## AM_REVOKED_JWT
+
+*APIM DB (WSO2AM_DB)* · PK: `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `UUID` | `VARCHAR(255)` | PK · NOT NULL |
+| `SIGNATURE` | `VARCHAR(2048)` | NOT NULL |
+| `EXPIRY_TIMESTAMP` | `BIGINT` | NOT NULL |
+| `TENANT_ID` | `INTEGER` | DEFAULT -1 |
+| `TOKEN_TYPE` | `VARCHAR(15)` | DEFAULT 'DEFAULT' |
+| `TIME_CREATED` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+
+## AM_SCOPE
+
+*APIM DB (WSO2AM_DB)* · PK: `SCOPE_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `SCOPE_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `NAME` | `VARCHAR(255)` | NOT NULL |
+| `DISPLAY_NAME` | `VARCHAR(255)` | NOT NULL |
+| `DESCRIPTION` | `VARCHAR(512)` |  |
+| `TENANT_ID` | `INTEGER` | NOT NULL DEFAULT -1 |
+| `SCOPE_TYPE` | `VARCHAR(255)` | NOT NULL |
+
+**Referenced by**
+
+- [`AM_SCOPE_BINDING`](#am_scope_binding) via `SCOPE_ID`
+
+**Likely links (no FK)**
+
+- `SCOPE_ID` → [`IDN_OAUTH2_SCOPE`](idn.md#idn_oauth2_scope) *(name-hint)*
+
+## AM_SCOPE_BINDING
+
+*APIM DB (WSO2AM_DB)* · PK: `—`
+
+| Column | Type | Notes |
+|---|---|---|
+| `SCOPE_ID` | `INTEGER` | FK → AM_SCOPE · NOT NULL |
+| `SCOPE_BINDING` | `VARCHAR(255)` | NOT NULL |
+| `BINDING_TYPE` | `VARCHAR(255)` | NOT NULL |
+
+**Foreign keys**
+
+- `SCOPE_ID` → [`AM_SCOPE`](#am_scope) `SCOPE_ID` (on delete: CASCADE)
+
+## AM_SECURITY_AUDIT_UUID_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `API_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `API_ID` | `INTEGER` | PK · FK → AM_API · NOT NULL |
+| `AUDIT_UUID` | `VARCHAR(255)` | NOT NULL |
+
+**Foreign keys**
+
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: RESTRICT)
+
+## AM_SHARED_SCOPE
+
+*APIM DB (WSO2AM_DB)* · PK: `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `NAME` | `VARCHAR(255)` | NOT NULL |
+| `UUID` | `VARCHAR (256)` | PK |
+| `TENANT_ID` | `INTEGER` |  |
+
+## AM_SUBSCRIBER
+
+*APIM DB (WSO2AM_DB)* · PK: `SUBSCRIBER_ID` · Unique: `TENANT_ID, USER_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `SUBSCRIBER_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `USER_ID` | `VARCHAR(255)` | NOT NULL |
+| `TENANT_ID` | `INTEGER` | NOT NULL |
+| `EMAIL_ADDRESS` | `VARCHAR(256)` | NULL |
+| `DATE_SUBSCRIBED` | `TIMESTAMP` | NOT NULL |
+| `CREATED_BY` | `VARCHAR(100)` |  |
+| `CREATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+| `UPDATED_BY` | `VARCHAR(100)` |  |
+| `UPDATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+
+**Referenced by**
+
+- [`AM_API_RATINGS`](#am_api_ratings) via `SUBSCRIBER_ID`
+- [`AM_APPLICATION`](#am_application) via `SUBSCRIBER_ID`
+- [`AM_APPLICATION_REGISTRATION`](#am_application_registration) via `SUBSCRIBER_ID`
+
+## AM_SUBSCRIPTION
+
+*APIM DB (WSO2AM_DB)* · PK: `SUBSCRIPTION_ID` · Unique: `UUID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `SUBSCRIPTION_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `TIER_ID` | `VARCHAR(50)` |  |
+| `TIER_ID_PENDING` | `VARCHAR(50)` |  |
+| `API_ID` | `INTEGER` | FK → AM_API |
+| `LAST_ACCESSED` | `TIMESTAMP` | NULL |
+| `APPLICATION_ID` | `INTEGER` | FK → AM_APPLICATION |
+| `SUB_STATUS` | `VARCHAR(50)` |  |
+| `SUBS_CREATE_STATE` | `VARCHAR(50)` | DEFAULT 'SUBSCRIBE' |
+| `CREATED_BY` | `VARCHAR(100)` |  |
+| `CREATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+| `UPDATED_BY` | `VARCHAR(100)` |  |
+| `UPDATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+| `UUID` | `VARCHAR(256)` |  |
+
+**Foreign keys**
+
+- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: RESTRICT)
+- `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: RESTRICT)
+
+**Referenced by**
+
+- [`AM_SUBSCRIPTION_KEY_MAPPING`](#am_subscription_key_mapping) via `SUBSCRIPTION_ID`
+
+## AM_SUBSCRIPTION_KEY_MAPPING
+
+*APIM DB (WSO2AM_DB)* · PK: `SUBSCRIPTION_ID, ACCESS_TOKEN`
+
+| Column | Type | Notes |
+|---|---|---|
+| `SUBSCRIPTION_ID` | `INTEGER` | PK · FK → AM_SUBSCRIPTION |
+| `ACCESS_TOKEN` | `VARCHAR(512)` | PK |
+| `KEY_TYPE` | `VARCHAR(512)` | NOT NULL |
+
+**Foreign keys**
+
+- `SUBSCRIPTION_ID` → [`AM_SUBSCRIPTION`](#am_subscription) `SUBSCRIPTION_ID` (on delete: RESTRICT)
+
+## AM_SYSTEM_APPS
+
+*APIM DB (WSO2AM_DB)* · PK: `ID` · Unique: `CONSUMER_KEY`
+
+| Column | Type | Notes |
+|---|---|---|
+| `ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `NAME` | `VARCHAR(50)` | NOT NULL |
+| `CONSUMER_KEY` | `VARCHAR(512)` | NOT NULL |
+| `CONSUMER_SECRET` | `VARCHAR(512)` | NOT NULL |
+| `CREATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
+| `TENANT_DOMAIN` | `VARCHAR(255)` | DEFAULT 'carbon.super' |
+
+**Likely links (no FK)**
+
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+
+## AM_TENANT_THEMES
+
+*APIM DB (WSO2AM_DB)* · PK: `TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `TENANT_ID` | `INTEGER` | PK · NOT NULL |
+| `THEME` | `MEDIUMBLOB` | NOT NULL |
+
+## AM_THROTTLE_TIER_PERMISSIONS
+
+*APIM DB (WSO2AM_DB)* · PK: `THROTTLE_TIER_PERMISSIONS_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `THROTTLE_TIER_PERMISSIONS_ID` | `INT` | PK · NOT NULL AUTO_INCREMENT |
+| `TIER` | `VARCHAR(50)` | NULL |
+| `PERMISSIONS_TYPE` | `VARCHAR(50)` | NULL |
+| `ROLES` | `VARCHAR(512)` | NULL |
+| `TENANT_ID` | `INT(11)` | NULL |
+
+## AM_TIER_PERMISSIONS
+
+*APIM DB (WSO2AM_DB)* · PK: `TIER_PERMISSIONS_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `TIER_PERMISSIONS_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `TIER` | `VARCHAR(50)` | NOT NULL |
+| `PERMISSIONS_TYPE` | `VARCHAR(50)` | NOT NULL |
+| `ROLES` | `VARCHAR(512)` | NOT NULL |
+| `TENANT_ID` | `INTEGER` | NOT NULL |
+
+## AM_USAGE_UPLOADED_FILES
+
+*APIM DB (WSO2AM_DB)* · PK: `TENANT_DOMAIN, FILE_NAME, FILE_TIMESTAMP`
+
+| Column | Type | Notes |
+|---|---|---|
+| `TENANT_DOMAIN` | `VARCHAR(255)` | PK · NOT NULL |
+| `FILE_NAME` | `VARCHAR(255)` | PK · NOT NULL |
+| `FILE_TIMESTAMP` | `TIMESTAMP` | PK · DEFAULT CURRENT_TIMESTAMP |
+| `FILE_PROCESSED` | `TINYINT(1)` | DEFAULT FALSE |
+| `FILE_CONTENT` | `MEDIUMBLOB` | DEFAULT NULL |
+
+## AM_USER
+
+*APIM DB (WSO2AM_DB)* · PK: `USER_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `USER_ID` | `VARCHAR(255)` | PK · NOT NULL |
+| `USER_NAME` | `VARCHAR(255)` | NOT NULL |
+
+## AM_WORKFLOWS
+
+*APIM DB (WSO2AM_DB)* · PK: `WF_ID` · Unique: `WF_EXTERNAL_REFERENCE`
+
+| Column | Type | Notes |
+|---|---|---|
+| `WF_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `WF_REFERENCE` | `VARCHAR(255)` | NOT NULL |
+| `WF_TYPE` | `VARCHAR(255)` | NOT NULL |
+| `WF_STATUS` | `VARCHAR(255)` | NOT NULL |
+| `WF_CREATED_TIME` | `TIMESTAMP` |  |
+| `WF_UPDATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+| `WF_STATUS_DESC` | `VARCHAR(1000)` |  |
+| `TENANT_ID` | `INTEGER` |  |
+| `TENANT_DOMAIN` | `VARCHAR(255)` |  |
+| `WF_EXTERNAL_REFERENCE` | `VARCHAR(255)` | NOT NULL |
+| `WF_METADATA` | `BLOB` | DEFAULT NULL |
+| `WF_PROPERTIES` | `BLOB` | DEFAULT NULL |
+

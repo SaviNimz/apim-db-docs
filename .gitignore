@@ -1,0 +1,9 @@
+# WSO2 product distributions: large, licensed binaries. Only the docs are versioned.
+/wso2am-*/
+/test
+
+# Python / MkDocs
+.venv/
+__pycache__/
+/site/
+.DS_Store

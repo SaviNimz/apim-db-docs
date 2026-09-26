@@ -1,0 +1,176 @@
+site_name: WSO2 API Manager — Database Guide
+site_description: The WSO2 API Manager 3.x and 4.x database, explained in plain language with simple diagrams.
+site_url: https://SaviNimz.github.io/apim-db-docs/
+repo_url: https://github.com/SaviNimz/apim-db-docs
+repo_name: apim-db-docs
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  icon:
+    logo: material/database-outline
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+extra_css:
+  - assets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+nav:
+  - Home: index.md
+  - How to read: how-to-read.md
+  - APIM 4.x:
+      - Overview: apim-4/index.md
+      - The databases: apim-4/databases.md
+      - Domains:
+          - Tenants & users: apim-4/domains/tenancy-users.md
+          - Registry: apim-4/domains/registry.md
+          - API definition: apim-4/domains/api-definition.md
+          - Scopes: apim-4/domains/scopes.md
+          - Operation policies: apim-4/domains/operation-policies.md
+          - API products: apim-4/domains/api-products.md
+          - Revisions & deployment: apim-4/domains/revisions-deployment.md
+          - Lifecycle & labels: apim-4/domains/lifecycle-labels.md
+          - Applications & subscriptions: apim-4/domains/applications-subscriptions.md
+          - Keys & tokens: apim-4/domains/keys-tokens.md
+          - Revocation: apim-4/domains/revocation.md
+          - Throttling policies: apim-4/domains/throttling.md
+          - Workflows: apim-4/domains/workflows.md
+          - Governance: apim-4/domains/governance.md
+          - AI APIs: apim-4/domains/ai-apis.md
+          - Developer Portal extras: apim-4/domains/devportal-extras.md
+          - Everything else: apim-4/domains/other.md
+      - Core flows:
+          - All flows: apim-4/flows/index.md
+          - Setup & first user: apim-4/flows/01-bootstrap.md
+          - Create an API: apim-4/flows/02-create-api.md
+          - Create a new version: apim-4/flows/03-new-version.md
+          - Deploy a revision: apim-4/flows/04-deploy-revision.md
+          - Change lifecycle state: apim-4/flows/05-lifecycle.md
+          - Create an API product: apim-4/flows/06-api-product.md
+          - Create an application: apim-4/flows/07-create-application.md
+          - Subscribe to an API: apim-4/flows/08-subscribe.md
+          - Generate keys: apim-4/flows/09-generate-keys.md
+          - Get a token & call the API: apim-4/flows/10-token-and-invoke.md
+          - Manage throttling policies: apim-4/flows/11-throttling-policies.md
+          - Revoke & delete: apim-4/flows/12-revocation-and-delete.md
+          - Approval workflows: apim-4/flows/13-approval-workflows.md
+          - Governance check: apim-4/flows/14-governance.md
+          - Create an AI API: apim-4/flows/15-ai-api.md
+      - Gotchas: apim-4/gotchas.md
+      - Identity Server tables: apim-4/identity-tables.md
+      - Table reference:
+          - apim-4/reference/index.md
+          - AM_*: apim-4/reference/am.md
+          - GOV_*: apim-4/reference/gov.md
+          - IDN_*: apim-4/reference/idn.md
+          - UM_*: apim-4/reference/um.md
+          - REG_*: apim-4/reference/reg.md
+          - SP_*: apim-4/reference/sp.md
+          - IDP_*: apim-4/reference/idp.md
+          - CM_*: apim-4/reference/cm.md
+          - WF_*: apim-4/reference/wf.md
+          - FIDO_*: apim-4/reference/fido.md
+          - FIDO2_*: apim-4/reference/fido2.md
+  - APIM 3.x:
+      - Overview: apim-3/index.md
+      - The databases: apim-3/databases.md
+      - Domains:
+          - Tenants & users: apim-3/domains/tenancy-users.md
+          - Registry: apim-3/domains/registry.md
+          - API definition: apim-3/domains/api-definition.md
+          - Scopes: apim-3/domains/scopes.md
+          - API products: apim-3/domains/api-products.md
+          - Gateway publishing: apim-3/domains/gateway-publishing.md
+          - Lifecycle & labels: apim-3/domains/lifecycle-labels.md
+          - Applications & subscriptions: apim-3/domains/applications-subscriptions.md
+          - Keys & tokens: apim-3/domains/keys-tokens.md
+          - Revocation: apim-3/domains/revocation.md
+          - Throttling policies: apim-3/domains/throttling.md
+          - Workflows: apim-3/domains/workflows.md
+          - Developer Portal extras: apim-3/domains/devportal-extras.md
+          - Everything else: apim-3/domains/other.md
+      - Core flows:
+          - All flows: apim-3/flows/index.md
+          - Setup & first user: apim-3/flows/01-bootstrap.md
+          - Create an API: apim-3/flows/02-create-api.md
+          - Create a new version: apim-3/flows/03-new-version.md
+          - Publish to the gateway: apim-3/flows/04-publish-to-gateway.md
+          - Change lifecycle state: apim-3/flows/05-lifecycle.md
+          - Create an API product: apim-3/flows/06-api-product.md
+          - Create an application: apim-3/flows/07-create-application.md
+          - Subscribe to an API: apim-3/flows/08-subscribe.md
+          - Generate keys: apim-3/flows/09-generate-keys.md
+          - Get a token & call the API: apim-3/flows/10-token-and-invoke.md
+          - Manage throttling policies: apim-3/flows/11-throttling-policies.md
+          - Revoke & delete: apim-3/flows/12-revocation-and-delete.md
+          - Approval workflows: apim-3/flows/13-approval-workflows.md
+      - Gotchas: apim-3/gotchas.md
+      - Identity Server tables: apim-3/identity-tables.md
+      - Table reference:
+          - apim-3/reference/index.md
+          - AM_*: apim-3/reference/am.md
+          - IDN_*: apim-3/reference/idn.md
+          - UM_*: apim-3/reference/um.md
+          - REG_*: apim-3/reference/reg.md
+          - SP_*: apim-3/reference/sp.md
+          - IDP_*: apim-3/reference/idp.md
+          - CM_*: apim-3/reference/cm.md
+          - WF_*: apim-3/reference/wf.md
+          - FIDO_*: apim-3/reference/fido.md
+          - FIDO2_*: apim-3/reference/fido2.md
+  - 3.x vs 4.x: comparison.md
+  - Glossary: glossary.md

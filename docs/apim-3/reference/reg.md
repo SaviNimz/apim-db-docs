@@ -1,0 +1,287 @@
+# REG_* — Registry
+
+17 tables. Generated from the 3.2.0 DDL.
+
+## REG_ASSOCIATION
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_ASSOCIATION_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_ASSOCIATION_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `REG_SOURCEPATH` | `VARCHAR (750)` | NOT NULL |
+| `REG_TARGETPATH` | `VARCHAR (750)` | NOT NULL |
+| `REG_ASSOCIATION_TYPE` | `VARCHAR (2000)` | NOT NULL |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+## REG_CLUSTER_LOCK
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_LOCK_NAME`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_LOCK_NAME` | `VARCHAR (20)` | PK |
+| `REG_LOCK_STATUS` | `VARCHAR (20)` |  |
+| `REG_LOCKED_TIME` | `TIMESTAMP` |  |
+| `REG_TENANT_ID` | `INTEGER` | DEFAULT 0 |
+
+## REG_COMMENT
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_COMMENT_TEXT` | `VARCHAR(500)` | NOT NULL |
+| `REG_USER_ID` | `VARCHAR(31)` | NOT NULL |
+| `REG_COMMENTED_TIME` | `TIMESTAMP` | NOT NULL |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE_COMMENT`](#reg_resource_comment) via `REG_COMMENT_ID, REG_TENANT_ID`
+
+## REG_CONTENT
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_CONTENT_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_CONTENT_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_CONTENT_DATA` | `LONGBLOB` |  |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE`](#reg_resource) via `REG_CONTENT_ID, REG_TENANT_ID`
+
+## REG_CONTENT_HISTORY
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_CONTENT_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_CONTENT_ID` | `INTEGER` | PK · NOT NULL |
+| `REG_CONTENT_DATA` | `LONGBLOB` |  |
+| `REG_DELETED` | `SMALLINT` |  |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE_HISTORY`](#reg_resource_history) via `REG_CONTENT_ID, REG_TENANT_ID`
+
+## REG_LOG
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_LOG_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_LOG_ID` | `INTEGER` | PK · AUTO_INCREMENT |
+| `REG_PATH` | `VARCHAR (750)` |  |
+| `REG_USER_ID` | `VARCHAR (31)` | NOT NULL |
+| `REG_LOGGED_TIME` | `TIMESTAMP` | NOT NULL |
+| `REG_ACTION` | `INTEGER` | NOT NULL |
+| `REG_ACTION_DATA` | `VARCHAR (500)` |  |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+## REG_PATH
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_PATH_ID, REG_TENANT_ID` · Unique: `REG_PATH_VALUE, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_PATH_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_PATH_VALUE` | `VARCHAR(750)` | NOT NULL |
+| `REG_PATH_PARENT_ID` | `INTEGER` |  |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE`](#reg_resource) via `REG_PATH_ID, REG_TENANT_ID`
+- [`REG_RESOURCE_COMMENT`](#reg_resource_comment) via `REG_PATH_ID, REG_TENANT_ID`
+- [`REG_RESOURCE_HISTORY`](#reg_resource_history) via `REG_PATH_ID, REG_TENANT_ID`
+- [`REG_RESOURCE_PROPERTY`](#reg_resource_property) via `REG_PATH_ID, REG_TENANT_ID`
+- [`REG_RESOURCE_RATING`](#reg_resource_rating) via `REG_PATH_ID, REG_TENANT_ID`
+- [`REG_RESOURCE_TAG`](#reg_resource_tag) via `REG_PATH_ID, REG_TENANT_ID`
+- [`REG_SNAPSHOT`](#reg_snapshot) via `REG_PATH_ID, REG_TENANT_ID`
+
+## REG_PROPERTY
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_NAME` | `VARCHAR(100)` | NOT NULL |
+| `REG_VALUE` | `VARCHAR(1000)` |  |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE_PROPERTY`](#reg_resource_property) via `REG_PROPERTY_ID, REG_TENANT_ID`
+
+## REG_RATING
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_RATING` | `INTEGER` | NOT NULL |
+| `REG_USER_ID` | `VARCHAR(31)` | NOT NULL |
+| `REG_RATED_TIME` | `TIMESTAMP` | NOT NULL |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE_RATING`](#reg_resource_rating) via `REG_RATING_ID, REG_TENANT_ID`
+
+## REG_RESOURCE
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_VERSION, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH · NOT NULL |
+| `REG_NAME` | `VARCHAR(256)` |  |
+| `REG_VERSION` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_MEDIA_TYPE` | `VARCHAR(500)` |  |
+| `REG_CREATOR` | `VARCHAR(31)` | NOT NULL |
+| `REG_CREATED_TIME` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| `REG_LAST_UPDATOR` | `VARCHAR(31)` |  |
+| `REG_LAST_UPDATED_TIME` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| `REG_DESCRIPTION` | `VARCHAR(1000)` |  |
+| `REG_CONTENT_ID` | `INTEGER` | FK → REG_CONTENT |
+| `REG_TENANT_ID` | `INTEGER` | PK · FK → REG_CONTENT · DEFAULT 0 |
+| `REG_UUID` | `VARCHAR(100)` | NOT NULL |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+- `REG_CONTENT_ID, REG_TENANT_ID` → [`REG_CONTENT`](#reg_content) `REG_CONTENT_ID, REG_TENANT_ID`
+
+## REG_RESOURCE_COMMENT
+
+*Shared DB (WSO2SHARED_DB)* · PK: `—`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_COMMENT_ID` | `INTEGER` | FK → REG_COMMENT · NOT NULL |
+| `REG_VERSION` | `INTEGER` |  |
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH |
+| `REG_RESOURCE_NAME` | `VARCHAR(256)` |  |
+| `REG_TENANT_ID` | `INTEGER` | FK → REG_COMMENT · DEFAULT 0 |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+- `REG_COMMENT_ID, REG_TENANT_ID` → [`REG_COMMENT`](#reg_comment) `REG_ID, REG_TENANT_ID`
+
+## REG_RESOURCE_HISTORY
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_VERSION, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH · NOT NULL |
+| `REG_NAME` | `VARCHAR(256)` |  |
+| `REG_VERSION` | `INTEGER` | PK · NOT NULL |
+| `REG_MEDIA_TYPE` | `VARCHAR(500)` |  |
+| `REG_CREATOR` | `VARCHAR(31)` | NOT NULL |
+| `REG_CREATED_TIME` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| `REG_LAST_UPDATOR` | `VARCHAR(31)` |  |
+| `REG_LAST_UPDATED_TIME` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| `REG_DESCRIPTION` | `VARCHAR(1000)` |  |
+| `REG_CONTENT_ID` | `INTEGER` | FK → REG_CONTENT_HISTORY |
+| `REG_DELETED` | `SMALLINT` |  |
+| `REG_TENANT_ID` | `INTEGER` | PK · FK → REG_CONTENT_HISTORY · DEFAULT 0 |
+| `REG_UUID` | `VARCHAR(100)` | NOT NULL |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+- `REG_CONTENT_ID, REG_TENANT_ID` → [`REG_CONTENT_HISTORY`](#reg_content_history) `REG_CONTENT_ID, REG_TENANT_ID`
+
+## REG_RESOURCE_PROPERTY
+
+*Shared DB (WSO2SHARED_DB)* · PK: `—`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_PROPERTY_ID` | `INTEGER` | FK → REG_PROPERTY · NOT NULL |
+| `REG_VERSION` | `INTEGER` |  |
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH |
+| `REG_RESOURCE_NAME` | `VARCHAR(256)` |  |
+| `REG_TENANT_ID` | `INTEGER` | FK → REG_PROPERTY · DEFAULT 0 |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+- `REG_PROPERTY_ID, REG_TENANT_ID` → [`REG_PROPERTY`](#reg_property) `REG_ID, REG_TENANT_ID`
+
+## REG_RESOURCE_RATING
+
+*Shared DB (WSO2SHARED_DB)* · PK: `—`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_RATING_ID` | `INTEGER` | FK → REG_RATING · NOT NULL |
+| `REG_VERSION` | `INTEGER` |  |
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH |
+| `REG_RESOURCE_NAME` | `VARCHAR(256)` |  |
+| `REG_TENANT_ID` | `INTEGER` | FK → REG_RATING · DEFAULT 0 |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+- `REG_RATING_ID, REG_TENANT_ID` → [`REG_RATING`](#reg_rating) `REG_ID, REG_TENANT_ID`
+
+## REG_RESOURCE_TAG
+
+*Shared DB (WSO2SHARED_DB)* · PK: `—`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_TAG_ID` | `INTEGER` | FK → REG_TAG · NOT NULL |
+| `REG_VERSION` | `INTEGER` |  |
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH |
+| `REG_RESOURCE_NAME` | `VARCHAR(256)` |  |
+| `REG_TENANT_ID` | `INTEGER` | FK → REG_TAG · DEFAULT 0 |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+- `REG_TAG_ID, REG_TENANT_ID` → [`REG_TAG`](#reg_tag) `REG_ID, REG_TENANT_ID`
+
+## REG_SNAPSHOT
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_SNAPSHOT_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_SNAPSHOT_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_PATH_ID` | `INTEGER` | FK → REG_PATH · NOT NULL |
+| `REG_RESOURCE_NAME` | `VARCHAR(255)` |  |
+| `REG_RESOURCE_VIDS` | `LONGBLOB` | NOT NULL |
+| `REG_TENANT_ID` | `INTEGER` | PK · FK → REG_PATH · DEFAULT 0 |
+
+**Foreign keys**
+
+- `REG_PATH_ID, REG_TENANT_ID` → [`REG_PATH`](#reg_path) `REG_PATH_ID, REG_TENANT_ID`
+
+## REG_TAG
+
+*Shared DB (WSO2SHARED_DB)* · PK: `REG_ID, REG_TENANT_ID`
+
+| Column | Type | Notes |
+|---|---|---|
+| `REG_ID` | `INTEGER` | PK · NOT NULL AUTO_INCREMENT |
+| `REG_TAG_NAME` | `VARCHAR(500)` | NOT NULL |
+| `REG_USER_ID` | `VARCHAR(31)` | NOT NULL |
+| `REG_TAGGED_TIME` | `TIMESTAMP` | NOT NULL |
+| `REG_TENANT_ID` | `INTEGER` | PK · DEFAULT 0 |
+
+**Referenced by**
+
+- [`REG_RESOURCE_TAG`](#reg_resource_tag) via `REG_TAG_ID, REG_TENANT_ID`
+
