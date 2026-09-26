@@ -20,6 +20,8 @@ Every *version* of an API is a separate `AM_API` row. So is every *API product*,
     - `AM_API_URL_MAPPING.REVISION_UUID` is **NULL** for the current API.
     - `AM_API_ENDPOINTS`, `AM_API_PRIMARY_EP_MAPPING`, `AM_API_METADATA` and `AM_API_CLIENT_CERTIFICATE` use the literal text **`'Current API'`** instead.
     - `AM_API_SEQUENCE_BACKEND` uses `'0'`.
+    - `AM_API_AI_CONFIGURATION.API_REVISION_UUID` is **NULL** for the current API (verified).
+    - For **API product** resource copies, `AM_API_URL_MAPPING.REVISION_UUID` holds the *product's* `API_ID` as text (verified). See [Create an API product](../flows/06-api-product.md).
 
 ## How the tables connect
 
@@ -154,6 +156,8 @@ erDiagram
 
 **One row =** one named backend endpoint of an API (4.x supports several endpoints per API).
 
+**Watch out:** a normal API's default production and sandbox URLs stay in the **registry artifact**. On a 4.7.0 test server, creating a REST API and an AI API wrote **no** row here. The table is used for extra named endpoints, e.g. for AI model routing and failover.
+
 | Column | What it means |
 |---|---|
 | `API_UUID` | API (FK → `AM_API.API_UUID`, cascade). |
@@ -230,12 +234,14 @@ erDiagram
 
 ## Example
 
+These are real rows from a 4.7.0 test server:
+
 | Table | Row |
 |---|---|
-| `AM_API` | `API_ID = 1`, `API_UUID = 5f1c…`, `API_NAME = PizzaShackAPI`, `API_VERSION = 1.0.0`, `CONTEXT = /pizzashack/1.0.0`, `API_TYPE = HTTP` |
-| `AM_API_URL_MAPPING` | `URL_MAPPING_ID = 10`, `API_ID = 1`, `GET /menu`, `THROTTLING_TIER = Unlimited`, `REVISION_UUID = NULL` |
-| `AM_API_URL_MAPPING` | `URL_MAPPING_ID = 11`, `API_ID = 1`, `POST /order`, `THROTTLING_TIER = 10KPerMin`, `REVISION_UUID = NULL` |
-| `AM_API_ENDPOINTS` | `API_UUID = 5f1c…`, `ENDPOINT_NAME = default`, `KEY_TYPE = PRODUCTION`, `REVISION_UUID = Current API` |
+| `AM_API` | `API_ID = 1`, `API_UUID = b41b…`, `API_NAME = PizzaShackAPI`, `API_VERSION = 1.0.0`, `CONTEXT = /pizzashack/1.0.0`, `CONTEXT_TEMPLATE = /pizzashack`, `API_TYPE = HTTP`, `API_SUBTYPE = DEFAULT` |
+| `AM_API_URL_MAPPING` | `URL_MAPPING_ID = 1`, `API_ID = 1`, `GET /menu`, `AUTH_SCHEME = Any`, `THROTTLING_TIER = Unlimited`, `REVISION_UUID = NULL` |
+| `AM_API_URL_MAPPING` | `URL_MAPPING_ID = 2`, `API_ID = 1`, `POST /order`, `AUTH_SCHEME = Any`, `THROTTLING_TIER = Unlimited`, `REVISION_UUID = NULL` |
+| `AM_API_LC_EVENT` | `API_ID = 1`, `PREVIOUS_STATE = NULL`, `NEW_STATE = CREATED` |
 
 ## Try it
 

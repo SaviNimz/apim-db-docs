@@ -113,9 +113,9 @@ erDiagram
 | `APPLICATION_ID` | → `AM_APPLICATION` (FK, **restricted**). |
 | `API_ID` | → [`AM_API`](api-definition.md#am_api) (FK, **restricted**). This can be an API or an API product. |
 | `TIER_ID` | Subscription policy **name**, e.g. `Gold` (*logical* link to [`AM_POLICY_SUBSCRIPTION`](throttling.md#am_policy_subscription)). |
-| `TIER_ID_PENDING` | New tier requested but waiting for approval. |
+| `TIER_ID_PENDING` | New tier requested but waiting for approval. On a live 3.2.0 server a plain new subscription had this set to the same value as `TIER_ID` (`Gold`), not `NULL`. |
 | `SUB_STATUS` | `UNBLOCKED` (active), `BLOCKED`, `PROD_ONLY_BLOCKED`, `ON_HOLD` (waiting for approval), `REJECTED` or `TIER_UPDATE_PENDING`. |
-| `SUBS_CREATE_STATE` | `SUBSCRIBE`, or `UNSUBSCRIBE` while a deletion workflow is pending. |
+| `SUBS_CREATE_STATE` | `SUBSCRIBE`, or `UN_SUBSCRIBE` while a deletion workflow is pending. |
 | `LAST_ACCESSED` | Last time the subscription was used. |
 
 **Connects to:**

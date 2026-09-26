@@ -11,7 +11,7 @@ After subscribing, a developer clicks **Generate Keys** for their application. B
 2. APIM records "application 5's **PRODUCTION** keys live in key manager *Resident Key Manager* under consumer key `abc123`" in `AM_APPLICATION_KEY_MAPPING`. The app can also have separate **SANDBOX** keys, and keys in several key managers.
 3. The app uses the consumer key and secret to get **access tokens** from the KM. It sends a token with every API call, and the gateway checks it.
 
-With the **Resident Key Manager**, the OAuth client and its tokens are stored in this same database (`IDN_OAUTH_CONSUMER_APPS`, `IDN_OAUTH2_ACCESS_TOKEN` and friends). Identity Server also creates a matching *service provider* (`SP_APP`) for each client. With an **external key manager**, only APIM's mapping row is stored locally. The client and its tokens live in the external system.
+With the **Resident Key Manager**, the OAuth client is stored in this same database (`IDN_OAUTH_CONSUMER_APPS` and friends). **Opaque** tokens are stored too (`IDN_OAUTH2_ACCESS_TOKEN`), but in 4.7.0's default setup the **JWT** access tokens issued to JWT-type applications are **not stored at all**. This was verified on a running server. Identity Server also creates a matching *service provider* (`SP_APP`) for each client. With an **external key manager**, only APIM's mapping row is stored locally. The client and its tokens live in the external system.
 
 !!! warning "Logical link (no foreign key)"
     The bridge between APIM and the key manager is **`AM_APPLICATION_KEY_MAPPING.CONSUMER_KEY` = `IDN_OAUTH_CONSUMER_APPS.CONSUMER_KEY`**. It isn't a foreign key, because the key manager may be external.
@@ -23,7 +23,7 @@ APIM's side (applications, keys and key managers):
 ```mermaid
 erDiagram
     AM_APPLICATION ||--o{ AM_APPLICATION_KEY_MAPPING : "keys per type + KM"
-    AM_APPLICATION ||--o{ AM_APPLICATION_REGISTRATION : "pending key requests"
+    AM_APPLICATION ||--o{ AM_APPLICATION_REGISTRATION : "key requests"
     AM_KEY_MANAGER ||..o{ AM_APPLICATION_KEY_MAPPING : "logical: KEY_MANAGER"
     AM_KEY_MANAGER ||--o{ AM_KEY_MANAGER_PERMISSIONS : "who may use"
     AM_KEY_MANAGER ||--o{ AM_KEY_MANAGER_ALLOWED_ORGS : "which orgs"
@@ -107,7 +107,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 
 ### AM_APPLICATION_REGISTRATION
 
-**One row =** a key-generation request that's waiting for an **approval workflow**. The row is removed once the request completes.
+**One row =** one key-generation request for an application, key type and key manager. It's used by the approval workflow, but 4.7.0 writes it **even when no workflow is configured**, and keeps it until the application is deleted (verified on a running server).
 
 | Column | What it means |
 |---|---|
@@ -131,7 +131,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 
 **One row =** an OAuth client that **APIM created for itself**. The Publisher, Developer Portal and Admin Portal web apps log in with these. It has `NAME`, `CONSUMER_KEY` (unique), `CONSUMER_SECRET` and `TENANT_DOMAIN`.
 
-**Watch out:** these clients also exist in `IDN_OAUTH_CONSUMER_APPS`, but they belong to no `AM_APPLICATION`.
+**Watch out:** these clients also exist in `IDN_OAUTH_CONSUMER_APPS`, but they belong to no `AM_APPLICATION`. They're registered the first time someone logs into each portal's **web UI**. On a test server driven only through the REST APIs, this table stayed empty.
 
 [Full column list](../reference/am.md#am_system_apps)
 
@@ -143,7 +143,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 |---|---|
 | `API_KEY_UUID` | Primary key. |
 | `NAME` | Name given when the key was created. |
-| `API_KEY_HASH` | Hash of the key (unique). The key itself isn't stored. |
+| `API_KEY_HASH` | Hash of the key (unique), e.g. `$sha256$a858…`. The key itself isn't stored (verified). |
 | `KEY_TYPE` | `PRODUCTION` or `SANDBOX`. |
 | `AUTHZ_USER` | The user who created it. |
 | `VALIDITY_PERIOD`, `TIME_CREATED`, `LAST_USED` | Lifetime and usage. |
@@ -169,7 +169,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 | `ID` | Internal number. Tokens and codes point here. |
 | `CONSUMER_KEY` | Client ID (unique). This is the value stored in `AM_APPLICATION_KEY_MAPPING.CONSUMER_KEY`. |
 | `CONSUMER_SECRET` | Client secret. It may be hashed or encrypted, depending on configuration. |
-| `APP_NAME` | Generated name, typically `<owner>_<application>_PRODUCTION` or `…_SANDBOX`. |
+| `APP_NAME` | Generated name: `<owner>_<application UUID>_PRODUCTION` or `…_SANDBOX` (verified on 4.7.0). |
 | `USERNAME`, `TENANT_ID`, `USER_DOMAIN` | Owner of the client. |
 | `GRANT_TYPES`, `CALLBACK_URL` | Allowed OAuth grant types (space-separated) and the redirect URL. |
 | `APP_STATE` | `ACTIVE` or `REVOKED`. |
@@ -192,14 +192,14 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 |---|---|
 | `TOKEN_ID` | Primary key. |
 | `CONSUMER_KEY_ID` | Client (FK → `IDN_OAUTH_CONSUMER_APPS.ID`, cascade). |
-| `ACCESS_TOKEN`, `REFRESH_TOKEN` (+ `_HASH`) | The token values. For JWT tokens, what's stored is the token's ID (`jti`), not the whole JWT. |
+| `ACCESS_TOKEN`, `REFRESH_TOKEN` (+ `_HASH`) | The token values. For an opaque token, `ACCESS_TOKEN` is the token itself (a UUID). |
 | `AUTHZ_USER`, `TENANT_ID`, `USER_DOMAIN`, `SUBJECT_IDENTIFIER` | Who the token was issued for. |
 | `GRANT_TYPE` | E.g. `client_credentials`, `password`, `authorization_code`. |
 | `TIME_CREATED`, `VALIDITY_PERIOD`, and the refresh-token equivalents | Lifetime. |
 | `TOKEN_STATE` | `ACTIVE`, `EXPIRED`, `REVOKED` or `INACTIVE`. |
 | `TOKEN_SCOPE_HASH`, `TOKEN_BINDING_REF`, `IDP_ID`, `CONSENTED_TOKEN` | Supporting data. |
 
-**Watch out:** in 4.x, gateways validate JWT tokens **by signature**, without reading this table. Revocation reaches the gateways through events (see [Revocation](revocation.md)). Token persistence can also be turned off in configuration, in which case this table stays mostly empty.
+**Watch out:** in 4.x, gateways validate JWT tokens **by signature**, without reading this table. On a 4.7.0 server with default settings, a `client_credentials` JWT for a JWT-type application left **no row here**. Only the opaque token of a `DEFAULT`-type client was stored. Revoking a JWT goes to `AM_REVOKED_JWT` + `IDN_INVALID_TOKENS` instead (see [Revocation](revocation.md)).
 
 [Full column list](../reference/idn.md#idn_oauth2_access_token)
 
@@ -240,16 +240,19 @@ It has `ID`, `APP_NAME`, `USERNAME`, `TENANT_ID`, `UUID` and many login-behaviou
 
 ## Example
 
-Keys for the application PizzaMobile, owned by alice:
+Production keys for the application `PizzaApp` (UUID `4023…`), owned by admin. These are real rows from a 4.7.0 test server:
 
 | Table | Row |
 |---|---|
-| `AM_APPLICATION_KEY_MAPPING` | `APPLICATION_ID = 5`, `KEY_TYPE = PRODUCTION`, `KEY_MANAGER = <Resident KM UUID>`, `CONSUMER_KEY = abc123`, `STATE = COMPLETED` |
-| `IDN_OAUTH_CONSUMER_APPS` | `ID = 42`, `CONSUMER_KEY = abc123`, `APP_NAME = alice_PizzaMobile_PRODUCTION`, `GRANT_TYPES = client_credentials password refresh_token` |
-| `SP_APP` | `APP_NAME = alice_PizzaMobile_PRODUCTION` |
-| `SP_INBOUND_AUTH` | `INBOUND_AUTH_KEY = abc123`, `INBOUND_AUTH_TYPE = oauth2` |
-| `IDN_OAUTH2_ACCESS_TOKEN` | `CONSUMER_KEY_ID = 42`, `GRANT_TYPE = client_credentials`, `TOKEN_STATE = ACTIVE` |
-| `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` | `TOKEN_SCOPE = default` |
+| `AM_APPLICATION_REGISTRATION` | `REG_ID = 1`, `APP_ID = 2`, `TOKEN_TYPE = PRODUCTION`, `TOKEN_SCOPE = default` |
+| `AM_APPLICATION_KEY_MAPPING` | `APPLICATION_ID = 2`, `KEY_TYPE = PRODUCTION`, `KEY_MANAGER = b446…` *(Resident KM UUID)*, `CONSUMER_KEY = rfjt…`, `STATE = COMPLETED`, `CREATE_MODE = CREATED` |
+| `IDN_OAUTH_CONSUMER_APPS` | `ID = 2`, `CONSUMER_KEY = rfjt…`, `APP_NAME = admin_4023…_PRODUCTION`, `GRANT_TYPES = client_credentials password` |
+| `IDN_OAUTH_CONSUMER_SECRETS` | `CONSUMER_KEY = rfjt…`, `SECRET_HASH = {"hash":"20e9…","algorithm":"SHA-256"}` |
+| `SP_APP` | `APP_NAME = admin_4023…_PRODUCTION` |
+| `SP_INBOUND_AUTH` | `INBOUND_AUTH_KEY = rfjt…`, `INBOUND_AUTH_TYPE = oauth2` |
+| `IDN_OAUTH2_ACCESS_TOKEN` | *(no row: the app's JWT access tokens aren't stored)* |
+
+Note that the OAuth client name uses the application's **UUID**, not its display name.
 
 ## Try it
 

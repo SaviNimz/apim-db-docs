@@ -3,7 +3,14 @@
 !!! abstract "What happens"
     The developer clicks **Generate Keys** for an application, choosing *Production* or *Sandbox* and a Key Manager. The Key Manager creates an OAuth client, which gives the application a **consumer key and secret**. APIM then records which OAuth client belongs to which application in `AM_APPLICATION_KEY_MAPPING`.
 
-**Who:** Developer (Dev Portal), Key Manager · **Tables written:** [`AM_APPLICATION_REGISTRATION`](../reference/am.md#am_application_registration) (if a workflow is on), [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), and with the Resident Key Manager also [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps), [`IDN_OAUTH_CONSUMER_SECRETS`](../reference/idn.md#idn_oauth_consumer_secrets), [`SP_APP`](../reference/sp.md#sp_app), [`SP_INBOUND_AUTH`](../reference/sp.md#sp_inbound_auth) · **Tables read:** [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager)
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by generating Production keys for `PizzaApp` on the Resident Key Manager. The call wrote [`AM_APPLICATION_REGISTRATION`](../reference/am.md#am_application_registration), [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps), [`IDN_OAUTH_CONSUMER_SECRETS`](../reference/idn.md#idn_oauth_consumer_secrets), 12 [`IDN_OIDC_PROPERTY`](../reference/idn.md#idn_oidc_property) rows, [`SP_APP`](../reference/sp.md#sp_app), [`SP_INBOUND_AUTH`](../reference/sp.md#sp_inbound_auth) and 6 [`SP_METADATA`](../reference/sp.md#sp_metadata) rows. No access token was stored. Surprises:
+
+    - **`AM_APPLICATION_REGISTRATION` is written even without an approval workflow.** It isn't only a "pending request" table.
+    - **The OAuth app name uses the application's UUID**, not its display name: `admin_4023…_PRODUCTION`.
+    - **`IDN_OAUTH_CONSUMER_SECRETS` is used by default.** The secret is stored there with a SHA-256 hash, and also as a property of the service provider in `SP_INBOUND_AUTH`.
+
+**Who:** Developer (Dev Portal), Key Manager · **Tables written:** [`AM_APPLICATION_REGISTRATION`](../reference/am.md#am_application_registration), [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), and with the Resident Key Manager also [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps), [`IDN_OAUTH_CONSUMER_SECRETS`](../reference/idn.md#idn_oauth_consumer_secrets), [`IDN_OIDC_PROPERTY`](../reference/idn.md#idn_oidc_property), [`SP_APP`](../reference/sp.md#sp_app), [`SP_INBOUND_AUTH`](../reference/sp.md#sp_inbound_auth), [`SP_METADATA`](../reference/sp.md#sp_metadata) · **Tables read:** [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager)
 
 ## How the tables connect
 
@@ -29,7 +36,7 @@ sequenceDiagram
     participant KM as Key Manager
     participant DB as APIM DB
     Dev->>Portal: Generate Production keys (Resident KM)
-    Portal->>DB: insert AM_APPLICATION_REGISTRATION (if approval on)
+    Portal->>DB: insert AM_APPLICATION_REGISTRATION
     Portal->>KM: create OAuth client
     KM->>DB: insert IDN_OAUTH_CONSUMER_APPS, SP_APP, secrets
     KM-->>Portal: consumer key + secret
@@ -43,19 +50,25 @@ sequenceDiagram
 
 1. **Pick the Key Manager.** The enabled Key Managers come from [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager) (`UUID`, `NAME`, `TYPE`, `ENABLED`, `ORGANIZATION`). Access can be restricted by role ([`AM_KEY_MANAGER_PERMISSIONS`](../reference/am.md#am_key_manager_permissions)) or by organization ([`AM_KEY_MANAGER_ALLOWED_ORGS`](../reference/am.md#am_key_manager_allowed_orgs)).
 
-2. **(Optional) approval.** If the *application registration* workflow is on:
-    - APIM stores the request in [`AM_APPLICATION_REGISTRATION`](../reference/am.md#am_application_registration). The row holds `SUBSCRIBER_ID`, `APP_ID`, `TOKEN_TYPE` (really the key type, `PRODUCTION`/`SANDBOX`), `KEY_MANAGER`, `WF_REF`, and the requested grant types and callback in `INPUTS`.
-    - It also adds an [`AM_WORKFLOWS`](../reference/am.md#am_workflows) row of type `AM_APPLICATION_REGISTRATION_PRODUCTION` or `…_SANDBOX`.
-    - The key mapping is created with `STATE = 'CREATED'`. The OAuth client is only made once the request is approved.
+2. **Registration request.** APIM always stores the request in [`AM_APPLICATION_REGISTRATION`](../reference/am.md#am_application_registration), even with no workflow. The row holds `SUBSCRIBER_ID`, `APP_ID`, `TOKEN_TYPE` (really the key type, `PRODUCTION`/`SANDBOX`), `TOKEN_SCOPE`, `KEY_MANAGER`, a generated `WF_REF`, and the requested grant types, callback and validity period in the `INPUTS` blob.
+
+    | REG_ID | SUBSCRIBER_ID | WF_REF | APP_ID | TOKEN_TYPE | TOKEN_SCOPE |
+    |---|---|---|---|---|---|
+    | 1 | 1 | `5a13…` | 2 | PRODUCTION | default |
+
+    If the *application registration* workflow is on, APIM also adds an [`AM_WORKFLOWS`](../reference/am.md#am_workflows) row of type `AM_APPLICATION_REGISTRATION_PRODUCTION` or `…_SANDBOX`. The key mapping is then created with `STATE = 'CREATED'`, and the OAuth client is only made once the request is approved. The workflow case wasn't tested.
 
 3. **OAuth client is created (Resident KM).** The built-in Key Manager (WSO2 Identity Server components):
-    - inserts the client into [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps): `CONSUMER_KEY`, `APP_NAME` (typically `<owner>_<appname>_<keytype>`), `GRANT_TYPES`, `CALLBACK_URL` and token lifetimes,
-    - stores the secret in [`IDN_OAUTH_CONSUMER_SECRETS`](../reference/idn.md#idn_oauth_consumer_secrets) when multiple secrets are enabled (this is a real FK on `CONSUMER_KEY`),
-    - registers a matching *service provider* in [`SP_APP`](../reference/sp.md#sp_app) and [`SP_INBOUND_AUTH`](../reference/sp.md#sp_inbound_auth) (`INBOUND_AUTH_KEY` = the consumer key, `INBOUND_AUTH_TYPE = 'oauth2'`).
+    - inserts the client into [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps): `CONSUMER_KEY`, `CONSUMER_SECRET`, `APP_NAME` (`<owner>_<application UUID>_<keytype>`), `GRANT_TYPES`, `CALLBACK_URL`, `APP_STATE = 'ACTIVE'` and token lifetimes (3600 s access, 86400 s refresh),
+    - stores the secret again in [`IDN_OAUTH_CONSUMER_SECRETS`](../reference/idn.md#idn_oauth_consumer_secrets), with a `SECRET_HASH` (a real FK on `CONSUMER_KEY`),
+    - saves OIDC settings for the client in [`IDN_OIDC_PROPERTY`](../reference/idn.md#idn_oidc_property),
+    - registers a matching *service provider* in [`SP_APP`](../reference/sp.md#sp_app) (`APP_NAME` = the same name), [`SP_METADATA`](../reference/sp.md#sp_metadata) and [`SP_INBOUND_AUTH`](../reference/sp.md#sp_inbound_auth) (`INBOUND_AUTH_KEY` = the consumer key, `INBOUND_AUTH_TYPE = 'oauth2'`).
 
     | IDN_OAUTH_CONSUMER_APPS.ID | CONSUMER_KEY | APP_NAME | GRANT_TYPES | TENANT_ID |
     |---|---|---|---|---|
-    | 12 | `Xk9f…` | admin_PizzaMobile_PRODUCTION | client_credentials password refresh_token | -1234 |
+    | 2 | `rfjt…` | admin_4023…_PRODUCTION | client_credentials password | -1234 |
+
+    *(ID 1 is the REST client registered for the test itself.)*
 
 4. **Key mapping.** APIM writes [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), with primary key `(APPLICATION_ID, KEY_TYPE, KEY_MANAGER)`:
     - `CONSUMER_KEY` → the OAuth client id.
@@ -67,8 +80,7 @@ sequenceDiagram
 
     | APPLICATION_ID | KEY_TYPE | KEY_MANAGER | CONSUMER_KEY | STATE | CREATE_MODE |
     |---|---|---|---|---|---|
-    | 2 | PRODUCTION | `3e1a…` *(Resident KM)* | `Xk9f…` | COMPLETED | CREATED |
-    | 2 | SANDBOX | `3e1a…` | `Pq7r…` | COMPLETED | CREATED |
+    | 2 | PRODUCTION | `b446…` *(Resident KM)* | `rfjt…` | COMPLETED | CREATED |
 
     !!! warning "Logical links (no foreign key)"
         - `AM_APPLICATION_KEY_MAPPING.CONSUMER_KEY` ↔ `IDN_OAUTH_CONSUMER_APPS.CONSUMER_KEY` is **the** bridge between APIM and OAuth, and it's a plain value match.
@@ -78,14 +90,13 @@ sequenceDiagram
 
 !!! info "API keys: a lighter alternative"
     Instead of OAuth, a developer can generate an **API key**.
-    - It's stored hashed in [`AM_API_KEY`](../reference/am.md#am_api_key) (`API_KEY_UUID`, `API_KEY_HASH`, `KEY_TYPE`, `STATUS`, `VALIDITY_PERIOD`, `LAST_USED`).
+    - It's stored **only as a hash** (`$sha256$…`) in [`AM_API_KEY`](../reference/am.md#am_api_key) (`API_KEY_UUID`, `API_KEY_HASH`, `KEY_TYPE`, `STATUS`, `VALIDITY_PERIOD`, `LAST_USED`).
     - It's linked to the application through [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping) (`APPLICATION_UUID` → `AM_APPLICATION.UUID`), or to an API through [`AM_API_KEY_API_MAPPING`](../reference/am.md#am_api_key_api_mapping).
     - These are real FKs with no ON DELETE rule, so the mappings must be removed before the key, app or API can be deleted.
 
 ## What gets cleaned up
 
-- Deleting the application cascades to `AM_APPLICATION_KEY_MAPPING` and `AM_APPLICATION_REGISTRATION`.
-- APIM's code then asks the Key Manager to delete the OAuth client. For the Resident KM, deleting from `IDN_OAUTH_CONSUMER_APPS` cascades to its tokens and secrets.
+- Deleting the application (verified) removed `AM_APPLICATION_KEY_MAPPING` and `AM_APPLICATION_REGISTRATION`, and APIM also asked the Key Manager to delete the OAuth client. For the Resident KM that removed the `IDN_OAUTH_CONSUMER_APPS`, `IDN_OAUTH_CONSUMER_SECRETS`, `IDN_OIDC_PROPERTY` and `SP_*` rows, and added an `IDN_APP_REVOKED_EVENT`. See [Revoke & delete](12-revocation-and-delete.md).
 - Regenerating the secret updates the Key Manager side only. The mapping row is unchanged.
 
 ## Try it

@@ -34,14 +34,14 @@ Only **3 tables were removed**: `AM_LABELS`, `AM_LABEL_URLS` and `AM_SUBSCRIPTIO
 
 ### 1. Gateway labels → revisions, environments and VHosts
 
-In **3.x**, publishing an API wrote its gateway artifact straight into `AM_GW_API_ARTIFACTS`, keyed by a **gateway label**. A `GATEWAY_INSTRUCTION` column (publish or remove) told each gateway what to do. The gateways themselves were configured in `deployment.toml` and never appeared in the database.
+In **3.x**, gateways were configured in `deployment.toml` and never appeared in the database. By default, publishing pushed the API straight to those gateways. Only when the optional database artifact sync was turned on did publishing write the artifact into `AM_GW_API_ARTIFACTS`, keyed by a **gateway label**, with a `GATEWAY_INSTRUCTION` column (publish or remove) telling each gateway what to do. On a default 3.2.0 install that table stays empty.
 
 In **4.x**, you first create a **revision**, which is a frozen copy of the API. Then you deploy that revision to a **gateway environment** and a **VHost**. The environments are now database rows.
 
 ```mermaid
 flowchart LR
     subgraph "3.x"
-        A3[AM_API] --> G3["AM_GW_API_ARTIFACTS<br/>(per gateway label)"]
+        A3[AM_API] -.-> G3["AM_GW_API_ARTIFACTS<br/>(per gateway label, only if DB sync is on)"]
     end
     subgraph "4.x"
         A4[AM_API] --> R4[AM_REVISION]
@@ -52,7 +52,7 @@ flowchart LR
 ```
 
 - `AM_GW_API_ARTIFACTS` changed its key from `(GATEWAY_LABEL, API_ID)` to `(REVISION_ID, API_ID)`. It also lost `GATEWAY_INSTRUCTION`, because deploy and undeploy state now lives in the deployment tables.
-- Deploying a revision writes `AM_DEPLOYMENT_REVISION_MAPPING` (requested). When a gateway confirms it, `AM_DEPLOYED_REVISION` is written. Each environment's hostnames and ports are stored in `AM_GW_VHOST`.
+- Creating a revision writes its artifact to `AM_GW_API_ARTIFACTS` straight away. Deploying the revision then writes `AM_DEPLOYMENT_REVISION_MAPPING` (the request), `AM_GW_API_DEPLOYMENTS`, and `AM_GW_REVISION_DEPLOYMENT`, which records the gateway's `SUCCESS` acknowledgement. On a default 4.7.0 run, `AM_DEPLOYED_REVISION` was never written. Environments and VHosts created in the Admin Portal are stored in `AM_GATEWAY_ENVIRONMENT` and `AM_GW_VHOST`, but the Default environment from `deployment.toml` isn't.
 - 20 tables now carry a revision column. The working copy of an API has the sentinel value `'Current API'` or `NULL` there. Revision rows copy the URL mappings, endpoints, policies and so on, each tagged with the revision's UUID.
 
 See [Revisions & deployment (4.x)](apim-4/domains/revisions-deployment.md) and [Gateway publishing (3.x)](apim-3/domains/gateway-publishing.md).
@@ -311,7 +311,7 @@ In 3.x, APIM's code had to delete the children first. In 4.x, the database does 
 | Setup & first user | [3.x](apim-3/flows/01-bootstrap.md) | [4.x](apim-4/flows/01-bootstrap.md) | Adds organizations (`UM_ORG*`, `AM_ORGANIZATION_MAPPING`) and `AM_SYSTEM_CONFIGS`. Gateway environments can be seeded as rows. |
 | Create an API | [3.x](apim-3/flows/02-create-api.md) | [4.x](apim-4/flows/02-create-api.md) | `AM_API` gets `API_UUID` and `ORGANIZATION`. Endpoints, operation policies, metadata, service links and AI config can be written to their own tables instead of only the registry. |
 | Create a new version | [3.x](apim-3/flows/03-new-version.md) | [4.x](apim-4/flows/03-new-version.md) | Same idea: a new `AM_API` row. The new version's revision-aware rows start again at `'Current API'`. |
-| Publish / deploy to the gateway | [3.x: publish](apim-3/flows/04-publish-to-gateway.md) | [4.x: deploy a revision](apim-4/flows/04-deploy-revision.md) | **The biggest change.** 3.x writes artifacts per gateway label. 4.x creates `AM_REVISION`, then writes `AM_DEPLOYMENT_REVISION_MAPPING`, then `AM_DEPLOYED_REVISION`, with artifacts stored per revision. |
+| Publish / deploy to the gateway | [3.x: publish](apim-3/flows/04-publish-to-gateway.md) | [4.x: deploy a revision](apim-4/flows/04-deploy-revision.md) | **The biggest change.** By default 3.x pushes straight to the gateways, so nothing goes to the database; artifacts per gateway label only appear when DB sync is on. 4.x creates `AM_REVISION` and stores its artifact, then deployment writes `AM_DEPLOYMENT_REVISION_MAPPING` and the gateway's acknowledgement in `AM_GW_REVISION_DEPLOYMENT`. |
 | Change lifecycle state | [3.x](apim-3/flows/05-lifecycle.md) | [4.x](apim-4/flows/05-lifecycle.md) | The state is also copied to `AM_API.STATUS`. The FK from `AM_API_LC_EVENT` now cascades. |
 | Create an API product | [3.x](apim-3/flows/06-api-product.md) | [4.x](apim-4/flows/06-api-product.md) | `AM_API_PRODUCT_MAPPING` is revision-aware, and products are deployed through revisions |
 | Create an application | [3.x](apim-3/flows/07-create-application.md) | [4.x](apim-4/flows/07-create-application.md) | `ORGANIZATION` and `SHARED_ORGANIZATION` on `AM_APPLICATION` |
@@ -324,6 +324,27 @@ In 3.x, APIM's code had to delete the children first. In 4.x, the database does 
 | Governance check | — | [4.x](apim-4/flows/14-governance.md) | New in 4.x |
 | Create an AI API | — | [4.x](apim-4/flows/15-ai-api.md) | New in 4.x |
 
+## Verified behaviour differences
+
+These differences were observed by running the same flows on **3.2.0** and **4.7.0**, both using the default H2 setup, and diffing the databases after each step. The schema alone doesn't show them.
+
+| Behaviour | 3.2.0 | 4.7.0 |
+|---|---|---|
+| Access tokens | Every token is **stored** in `IDN_OAUTH2_ACCESS_TOKEN`. Generating keys also issues and stores a first token. | Application JWTs are **not stored**. Only opaque tokens, such as the portals' own, get a row. |
+| Revoking a token | The row moves from `IDN_OAUTH2_ACCESS_TOKEN` to `IDN_OAUTH2_ACCESS_TOKEN_AUDIT`, and an `AM_REVOKED_JWT` row is added. | Adds `AM_REVOKED_JWT` and `IDN_INVALID_TOKENS` rows. |
+| API keys | Self-contained JWTs, so there's **nothing in the database**. | Stored as a SHA-256 hash in `AM_API_KEY`, linked to the application by UUID. |
+| Resource scopes | Only in `IDN_OAUTH2_SCOPE`. `AM_SCOPE` stays empty. | In `AM_SCOPE` **and** `IDN_OAUTH2_SCOPE`. |
+| API product resources | `AM_API_PRODUCT_MAPPING` points straight at the underlying API's existing URL mapping row. | The URL mapping row is **copied**, and the copy stores the product's `API_ID` in `REVISION_UUID`. |
+| Gateway artifacts in the database | None by default. Database sync is opt-in. | Written to `AM_GW_API_ARTIFACTS` when a **revision is created**. The gateway's acknowledgement goes to `AM_GW_REVISION_DEPLOYMENT`. |
+| Key manager reference | `KEY_MANAGER` holds the name (`Resident Key Manager`). | `KEY_MANAGER` holds the key manager's UUID. |
+| Governance | Doesn't exist. | Every API create, update or revision queues a governance run (`GOV_REQUEST`). Each run's results replace the previous run's. |
+
+Both versions agree on these:
+- `AM_SUBSCRIBER` and a `DefaultApplication` are created on the first Developer Portal action.
+- `AM_APPLICATION_REGISTRATION` is written even when no approval workflow is configured.
+- Calling an API writes nothing to the database.
+- APIM's code refuses (HTTP 409) to delete an API that has active subscriptions, whatever the foreign keys say.
+
 ## Migration tips
 
 !!! tip "When moving from 3.x to 4.x"
@@ -331,5 +352,5 @@ In 3.x, APIM's code had to delete the children first. In 4.x, the database does 
     - **Check your custom queries for integer vs UUID joins.** New 4.x tables join on `API_UUID` and `APPLICATION_UUID`. Old tables still use the integer `API_ID` and `APPLICATION_ID`.
     - **Filter revision-aware tables on the working copy.** A query on `AM_API_URL_MAPPING` that used to return one row per resource now returns one row per resource **per revision**. Add `REVISION_UUID IS NULL` (or `= 'Current API'`, depending on the table) to get just the working copy.
     - **Filter by organization.** Uniqueness on `AM_API`, `AM_APPLICATION` and `AM_KEY_MANAGER` now includes `ORGANIZATION`. Policy and scope tables still use `TENANT_ID`, so you'll often need to join via the tenant domain.
-    - **Replace label-based gateway logic.** Anything that read `AM_LABELS`, or `GATEWAY_LABEL` on `AM_GW_API_ARTIFACTS`, should now use `AM_GATEWAY_ENVIRONMENT`, `AM_GW_VHOST` and `AM_DEPLOYED_REVISION`.
+    - **Replace label-based gateway logic.** Anything that read `AM_LABELS`, or `GATEWAY_LABEL` on `AM_GW_API_ARTIFACTS`, should now use `AM_DEPLOYMENT_REVISION_MAPPING` and `AM_GW_REVISION_DEPLOYMENT` for deployment state, and `AM_GATEWAY_ENVIRONMENT` / `AM_GW_VHOST` for environments created in the Admin Portal. Environments defined in `deployment.toml` aren't in the database.
     - **Beware the new cascades.** Deleting an application or API in 4.x silently removes its subscriptions and key mappings. Back up before running clean-up scripts.

@@ -5,6 +5,15 @@
 
 **Who:** Any portal (requester) + Admin Portal (approver) · **Tables written:** `AM_WORKFLOWS`, plus the pending entity's own table · **Tables read:** `AM_WORKFLOWS`
 
+!!! success "Verified on a running server"
+    Checked on WSO2 APIM 3.2.0 (H2, default config). I switched `ApplicationCreation` and `SubscriptionCreation` to their *Approval* executors in the registry file `workflow-extensions.xml`, created an application and a subscription, then approved both through the Admin v1 REST API, diffing the database at each step.
+
+    - Changing the executors touched only the registry (`REG_CONTENT`, `REG_RESOURCE`). No table stores this setting.
+    - **Pending:** the new app was inserted with `APPLICATION_STATUS = 'CREATED'`, and the subscription with `SUB_STATUS = 'ON_HOLD'`. Each got an `AM_WORKFLOWS` row with `WF_STATUS = 'CREATED'` and `WF_REFERENCE` = the entity's integer ID as a string (`'3'`, `'2'`).
+    - **Approved:** the app changed to `APPROVED`, the subscription to `UNBLOCKED`, and both workflow rows to `APPROVED`. `WF_STATUS_DESC` was **overwritten** with the approver's note (`ok`), replacing the original request text.
+    - The Admin REST API identifies workflows by `WF_EXTERNAL_REFERENCE` (a UUID), not by `WF_ID`.
+    - The `WF_*` engine tables were not touched.
+
 ## The flow at a glance
 
 This diagram uses a subscription as the example. Other workflow types follow the same pattern.
@@ -44,12 +53,15 @@ sequenceDiagram
 
     | `WF_ID` | `WF_REFERENCE` | `WF_TYPE` | `WF_STATUS` | `WF_EXTERNAL_REFERENCE` | `TENANT_DOMAIN` | `WF_CREATED_TIME` |
     |---|---|---|---|---|---|---|
-    | 1 | `1` | `AM_SUBSCRIPTION_CREATION` | `CREATED` | `f2a9…` | `carbon.super` | 2020-09-01 12:00 |
+    | 1 | `3` | `AM_APPLICATION_CREATION` | `CREATED` | `2065…` | `carbon.super` | 2026-09-26 10:57 |
+    | 2 | `2` | `AM_SUBSCRIPTION_CREATION` | `CREATED` | `68eb…` | `carbon.super` | 2026-09-26 10:57 |
+
+    These are the real rows from the test run, before approval. `WF_STATUS_DESC` starts as a human-readable request such as "Approve API PizzaShackAPI - 1.0.0 subscription creation request from subscriber - admin …".
 
     - `WF_TYPE` is the **type discriminator**. It tells you what `WF_REFERENCE` points at.
     - `WF_REFERENCE` is the pending entity's ID: a `SUBSCRIPTION_ID`, an `APPLICATION_ID`, the API ID, or a user name.
-    - `WF_EXTERNAL_REFERENCE` is a unique ID used by the approver (or an external BPS/BPMN engine) to call back. `AM_APPLICATION_REGISTRATION.WF_REF` matches it.
-    - `WF_STATUS` is `CREATED` (pending), `APPROVED` or `REJECTED`. `WF_STATUS_DESC` holds the approver's note.
+    - `WF_EXTERNAL_REFERENCE` is a unique ID (a UUID) used by the approver (or an external BPS/BPMN engine) to call back. The Admin REST API's `workflowReferenceId` parameter is this value.
+    - `WF_STATUS` is `CREATED` (pending), `APPROVED` or `REJECTED`. `WF_STATUS_DESC` holds the request text while pending, and is replaced by the approver's note on decision.
     - `WF_METADATA` / `WF_PROPERTIES` hold the details shown to the approver, such as the API name, the app name and the tier.
 
     !!! warning "Logical link (no foreign key)"

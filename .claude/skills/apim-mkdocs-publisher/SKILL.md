@@ -161,6 +161,54 @@ small sequenceDiagram (roles → Database), ≤10 messages
 - `docs/glossary.md`: APIM terms (API, API product, revision, gateway environment, VHost, application, subscription, key manager, consumer key, tier/policy, scope, lifecycle, tenant, organization, registry, and so on), each in one or two plain sentences.
 - `docs/comparison.md`: 3.x vs 4.x. Cover the added, removed and renamed tables, the changes to the core tables, how each flow changed, and one simple before/after diagram per big change.
 
+## Live verification (run the flows on a real server)
+
+The schema alone can't show write order or which tables really get touched. To confirm the flow pages, run each flow once against a running server and diff the database after every step. The scripts are in `scripts/verify/`:
+- `snap.sh` dumps both DBs with H2 `SCRIPT SIMPLE`;
+- `diff.py` reports the rows inserted, deleted or updated per table;
+- `step.sh` takes a snapshot and diffs it against the previous one.
+
+1. **Back up first.** Copy `repository/database/*.mv.db` and `repository/conf/deployment.toml` to the scratchpad. Restore both when you're done, and confirm nothing is left in the product folder.
+2. **Let the snapshot tool read the live DB.** Append `;AUTO_SERVER=TRUE` to the `apim_db` and `shared_db` H2 URLs.
+   - H2 2.x (APIM 4.x) rejects `AUTO_SERVER` together with `DB_CLOSE_ON_EXIT=FALSE`, so drop that flag there.
+   - H2 1.4 (APIM 3.x) accepts both.
+3. **Use the right Java.**
+   - 4.7.0 needs **Java 21** (class version 65), and fails on 17.
+   - 3.2.0 needs **Java 8** (or 11).
+   - If the JDK is missing, download a Temurin JDK archive into the scratchpad rather than installing it system-wide.
+   - Start the server with `bin/api-manager.sh` (4.x) or `bin/wso2server.sh` (3.x), run it in the background, and wait for `WSO2 Carbon started in`.
+4. **Take the baseline snapshots.**
+   ```bash
+   export VERIFY_OUT=<scratchpad>/verify JAVA=<jdk>/bin/java
+   S=.claude/skills/apim-mkdocs-publisher/scripts/verify
+   $S/snap.sh wso2am-X 00-pristine <dir with the backed-up .mv.db copies>   # shipped state
+   $S/step.sh wso2am-X 01-after-startup                                      # what startup seeds
+   ```
+   To diff 00 against 01, run `diff.py` by hand. Use a new label for every step: `step.sh` refuses to reuse one.
+5. **Drive each flow over REST**, then run `step.sh` after every action. Register a DCR client and get the admin token **before** the flow snapshots, so they don't show up in the flow diffs.
+
+   | | 4.x | 3.x |
+   |---|---|---|
+   | Publisher | `/api/am/publisher/v4` | `/api/am/publisher/v1` |
+   | Dev Portal | `/api/am/devportal/v3` | `/api/am/store/v1` |
+   | Admin | `/api/am/admin/v4` | `/api/am/admin/v1` |
+
+   For the flow calls, run a tiny local backend (e.g. `python3 -m http.server`) as the API endpoint.
+6. **Read the diffs, and ignore the noise.** The noise is:
+   - `REG_LOG`;
+   - `AM_GW_INSTANCES` heartbeats (4.x);
+   - background governance re-runs (4.x);
+   - the REST client's own OAuth rows.
+
+   A table showing both `+N` and `-N` is an update. Then fix the flow pages and add a `!!! success "Verified on a running server"` box.
+
+Things that trip up the REST calls:
+- **Approval workflows** are set in the registry file `/_system/governance/apimgt/applicationdata/workflow-extensions.xml`, not in tenant-config. Read and update it through the `ResourceAdminService` SOAP endpoint (`getTextContent` / `updateTextContent`, basic auth). Swap `*SimpleWorkflowExecutor` for `*ApprovalWorkflowExecutor`, then approve through the Admin API's `workflows/update-workflow-status?workflowReferenceId=<WF_EXTERNAL_REFERENCE>`.
+- **API keys (4.x):** the generate call needs a `keyName`.
+- **Gateway environments (3.x):** an API created without `gatewayEnvironments` is published but not deployed, so the gateway returns 404. Set `["Production and Sandbox"]`.
+- **Admin v1 (3.x):** limit types are upper-case (`REQUESTCOUNTLIMIT`), and block conditions go to `/throttling/blacklist` with `{"fixedIp": ...}`.
+- **Portal-only rows:** `AM_SYSTEM_APPS` and similar rows are only created when someone logs into the portals in a browser, so REST-only runs won't show them.
+
 ## Publishing (GitHub Pages)
 
 The first-time setup needs `gh` to be logged in (`gh auth status`). If it isn't, ask the user to run `! gh auth login`.

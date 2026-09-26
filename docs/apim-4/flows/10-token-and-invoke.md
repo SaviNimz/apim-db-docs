@@ -3,7 +3,14 @@
 !!! abstract "What happens"
     The client app swaps its consumer key and secret for an **access token** from the Key Manager, then calls the API through the **Gateway**. The Gateway checks four things: that the token is valid, that the application is subscribed, that the token has the scopes the resource needs, and that the rate limits aren't exceeded. Then it forwards the request to the backend.
 
-**Who:** Client app, Key Manager, Gateway · **Tables written:** [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token), [`IDN_OAUTH2_ACCESS_TOKEN_SCOPE`](../reference/idn.md#idn_oauth2_access_token_scope) (Resident KM, when tokens are persisted) · **Tables read (via the control plane):** [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), `AM_POLICY_*`
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by getting a `client_credentials` token for `PizzaApp` (a JWT-type application) and calling `GET /pizzashack/1.0.0/menu` three times through the gateway (HTTP 200). Surprises:
+
+    - **The JWT access token was not stored anywhere.** No [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token) row was written. By contrast, the **opaque** token issued to the test's own REST client (a password grant) *was* stored, with a UUID in `ACCESS_TOKEN`.
+    - **Calling the API wrote nothing** to either database.
+    - **An API key is stored only as a hash.** Generating one wrote [`AM_API_KEY`](../reference/am.md#am_api_key) (`API_KEY_HASH = '$sha256$…'`) and [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping), which is linked by the application's **UUID**.
+
+**Who:** Client app, Key Manager, Gateway · **Tables written:** none for a JWT token or an API call. [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token) and [`IDN_OAUTH2_ACCESS_TOKEN_SCOPE`](../reference/idn.md#idn_oauth2_access_token_scope) only for opaque (non-JWT) tokens. [`AM_API_KEY`](../reference/am.md#am_api_key) and [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping) for API keys · **Tables read (via the control plane):** [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), `AM_POLICY_*`
 
 ## The flow at a glance
 
@@ -18,8 +25,7 @@ sequenceDiagram
     participant BE as Backend
     App->>KM: POST /oauth2/token (key + secret)
     KM->>DB: read IDN_OAUTH_CONSUMER_APPS
-    KM->>DB: insert IDN_OAUTH2_ACCESS_TOKEN + _SCOPE
-    KM-->>App: JWT access token
+    KM-->>App: JWT access token (not stored)
     App->>GW: GET /pizzashack/1.0.0/menu (Bearer JWT)
     GW->>GW: check signature, subscription, scope, limits (in memory)
     GW->>BE: forward request
@@ -33,23 +39,20 @@ sequenceDiagram
 
 1. **Token request.** The Key Manager finds the client in [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps) by `CONSUMER_KEY` and checks the secret and grant type.
 
-2. **Token stored (Resident KM).** With the default settings, the token is recorded in [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token), and its scopes in [`IDN_OAUTH2_ACCESS_TOKEN_SCOPE`](../reference/idn.md#idn_oauth2_access_token_scope) (`TOKEN_ID`, `TOKEN_SCOPE`, FK with cascade). The important token columns are:
+2. **Token stored? Only if it's opaque.** In 4.7.0's default setup, **JWT access tokens are not persisted**: the test's client_credentials JWT left no row. Opaque tokens, such as those for applications with token type `DEFAULT` or the REST client used in the test, are recorded in [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token), with their scopes in [`IDN_OAUTH2_ACCESS_TOKEN_SCOPE`](../reference/idn.md#idn_oauth2_access_token_scope) (`TOKEN_ID`, `TOKEN_SCOPE`, FK with cascade). The important token columns are:
     - `CONSUMER_KEY_ID` → `IDN_OAUTH_CONSUMER_APPS.ID` (a real FK, cascade)
     - `AUTHZ_USER`, `GRANT_TYPE`, `TOKEN_STATE` (`ACTIVE`, `REVOKED`, `EXPIRED` …)
     - `TIME_CREATED`, `VALIDITY_PERIOD`
-    - `ACCESS_TOKEN` / `ACCESS_TOKEN_HASH`. For JWT tokens this holds the token's identifier (`jti`), not the whole JWT.
+    - `ACCESS_TOKEN` / `ACCESS_TOKEN_HASH`. For an opaque token, `ACCESS_TOKEN` is the token value itself (a UUID).
 
-    | TOKEN_ID | CONSUMER_KEY_ID | AUTHZ_USER | GRANT_TYPE | TOKEN_STATE | VALIDITY_PERIOD |
-    |---|---|---|---|---|---|
-    | `t-001` | 12 *(PizzaMobile PRODUCTION)* | admin | client_credentials | ACTIVE | 3600000 |
+    The opaque token issued to the test's REST client looked like this:
 
-    | TOKEN_ID | TOKEN_SCOPE |
-    |---|---|
-    | `t-001` | order:write |
-    | `t-001` | default |
+    | TOKEN_ID | CONSUMER_KEY_ID | AUTHZ_USER | USER_TYPE | GRANT_TYPE | TOKEN_STATE | VALIDITY_PERIOD |
+    |---|---|---|---|---|---|---|
+    | `a109…` | 1 *(REST client)* | admin | APPLICATION_USER | password | ACTIVE | 3600000 |
 
-    !!! info "Persisted or not?"
-        - Newer versions can be configured **not to store** JWT access tokens at all. In that case there are no rows here, and revocation is tracked through [`IDN_INVALID_TOKENS`](../reference/idn.md#idn_invalid_tokens) and the revoked-event tables instead (see [Revoke & delete](12-revocation-and-delete.md)).
+    !!! info "Where do JWTs go, then?"
+        - Because JWTs aren't stored, revoking one is tracked through [`AM_REVOKED_JWT`](../reference/am.md#am_revoked_jwt) and [`IDN_INVALID_TOKENS`](../reference/idn.md#idn_invalid_tokens) instead (verified, see [Revoke & delete](12-revocation-and-delete.md)).
         - Third-party Key Managers keep their tokens in their own systems.
 
 3. **Gateway validates the JWT.** It checks the signature and expiry locally, using the Key Manager's certificate/JWKS. It also checks the token isn't in the revoked list, which is loaded from [`AM_REVOKED_JWT`](../reference/am.md#am_revoked_jwt).
@@ -71,16 +74,22 @@ sequenceDiagram
 
     If any limit is exceeded, the Gateway returns HTTP 429. See [Manage throttling policies](11-throttling-policies.md).
 
-7. **Forward and record.** The request goes to the endpoint from the revision's [`AM_API_ENDPOINTS`](../reference/am.md#am_api_endpoints) / endpoint config. Analytics events go to the analytics system, **not** to these tables. [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription)`.LAST_ACCESSED` exists but isn't updated per request.
+7. **Forward and record.** The request goes to the backend URL from the deployed revision's artifact. Analytics events go to the analytics system, **not** to these tables. In the test, three successful calls changed **no rows at all**. [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription)`.LAST_ACCESSED` exists but stayed `NULL`.
+
+!!! info "API keys: the other way in"
+    A developer can also generate an **API key** for an application. In the test (`POST …/applications/{id}/api-keys/PRODUCTION/generate` with a `keyName`):
+    - [`AM_API_KEY`](../reference/am.md#am_api_key) got one row: `API_KEY_UUID`, `NAME = 'pizza-key'`, `API_KEY_HASH = '$sha256$a858…'`, `KEY_TYPE = 'PRODUCTION'`, `API_KEY_PROPERTIES` (allowed referrers and IPs), `AUTHZ_USER = 'admin'`. **The key itself is never stored.**
+    - [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping) linked it to the app by `APPLICATION_UUID` (`4023…`), not by the integer `APPLICATION_ID`.
+    - Deleting the application removed the mapping row.
 
 ## What gets cleaned up
 
-- Expired and revoked token rows are removed by the Key Manager's token cleanup, which is configurable. The cleanup may copy them to [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](../reference/idn.md#idn_oauth2_access_token_audit) first.
+- Stored (opaque) tokens that expire or are revoked are removed by the Key Manager's token cleanup, which is configurable. The cleanup may copy them to [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](../reference/idn.md#idn_oauth2_access_token_audit) first.
 - Deleting the OAuth client cascades to its tokens and their scopes.
 
 ## Try it
 
-This query lists the active tokens for an application's production keys.
+This query lists the stored (opaque) active tokens for an application's production keys. For JWT-type apps in 4.7.0 it returns nothing, because JWTs aren't stored.
 
 ```sql
 SELECT ap.NAME AS APPLICATION, t.AUTHZ_USER, t.GRANT_TYPE, t.TOKEN_STATE,
@@ -90,10 +99,10 @@ JOIN AM_APPLICATION_KEY_MAPPING km ON km.APPLICATION_ID = ap.APPLICATION_ID
                                   AND km.KEY_TYPE = 'PRODUCTION'
 JOIN IDN_OAUTH_CONSUMER_APPS oc ON oc.CONSUMER_KEY = km.CONSUMER_KEY
 JOIN IDN_OAUTH2_ACCESS_TOKEN t ON t.CONSUMER_KEY_ID = oc.ID
-WHERE ap.NAME = 'PizzaMobile' AND t.TOKEN_STATE = 'ACTIVE';
+WHERE ap.NAME = 'PizzaApp' AND t.TOKEN_STATE = 'ACTIVE';
 ```
 
 !!! note "Different in 3.x"
-    3.x validates tokens the same way, and also supports opaque tokens (validated by calling the Key Manager) and self-contained JWT API keys. Its `AM_SUBSCRIPTION_KEY_MAPPING` table has no 4.x equivalent. See [3.x: Get a token & call the API](../../apim-3/flows/10-token-and-invoke.md).
+    3.x validates tokens the same way, but **stores every token it issues**, JWTs included, in `IDN_OAUTH2_ACCESS_TOKEN`. Its API keys are self-contained JWTs with no database row, and its `AM_SUBSCRIPTION_KEY_MAPPING` table has no 4.x equivalent. See [3.x: Get a token & call the API](../../apim-3/flows/10-token-and-invoke.md).
 
 **Related domains:** [Keys & tokens](../domains/keys-tokens.md) · [Scopes](../domains/scopes.md) · [Throttling policies](../domains/throttling.md) · [Revocation](../domains/revocation.md)

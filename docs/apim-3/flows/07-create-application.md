@@ -3,7 +3,14 @@
 !!! abstract "What happens"
     A developer creates an *application* in the Developer Portal. The application represents their software, such as a mobile app. APIM makes sure the developer has a subscriber row, then stores the application with its rate-limit tier, token type and any custom attributes.
 
-**Who:** Developer Portal (API consumer) · **Tables written:** `AM_SUBSCRIBER` (first time only), `AM_APPLICATION`, `AM_APPLICATION_ATTRIBUTES`, `AM_APPLICATION_GROUP_MAPPING`, `AM_WORKFLOWS` (if approval is on) · **Tables read:** `AM_POLICY_APPLICATION`
+**Who:** Developer Portal (API consumer) · **Tables written:** `AM_SUBSCRIBER` (first time only), `AM_APPLICATION`, `AM_APPLICATION_ATTRIBUTES` (if attributes are given), `AM_APPLICATION_GROUP_MAPPING` (if sharing is on), `AM_WORKFLOWS` (if approval is on) · **Tables read:** `AM_POLICY_APPLICATION`
+
+!!! success "Verified on a running server"
+    Checked on WSO2 APIM 3.2.0 (H2, default config) by creating `PizzaApp` (tier `Unlimited`, token type `JWT`, no attributes) as the first Dev Portal action of `admin`, and diffing the database.
+
+    - Written: one `AM_SUBSCRIBER` row and **two** `AM_APPLICATION` rows, the automatic `DefaultApplication` and `PizzaApp`. Both ended with status `APPROVED`.
+    - No `AM_APPLICATION_ATTRIBUTES`, `AM_APPLICATION_GROUP_MAPPING` or `AM_WORKFLOWS` rows, because none of those features were used.
+    - With approval turned on, a second app stayed at `CREATED` with an `AM_WORKFLOWS` row. See [Approval workflows](13-approval-workflows.md).
 
 ## The flow at a glance
 
@@ -14,12 +21,12 @@ sequenceDiagram
     actor Dev as Developer
     participant Portal as Dev Portal
     participant DB as Database
-    Dev->>Portal: Create "PizzaMobileApp", tier 10PerMin
-    Portal->>DB: find or insert AM_SUBSCRIBER
-    Portal->>DB: insert AM_APPLICATION (status CREATED)
-    Portal->>DB: insert AM_APPLICATION_ATTRIBUTES
+    Dev->>Portal: Create "PizzaApp", tier Unlimited
+    Portal->>DB: find or insert AM_SUBSCRIBER (+ DefaultApplication)
+    Portal->>DB: insert AM_APPLICATION
+    Portal->>DB: insert AM_APPLICATION_ATTRIBUTES (if any)
     Portal->>DB: insert AM_WORKFLOWS (if approval on)
-    Portal->>DB: set status APPROVED
+    Portal->>DB: status APPROVED (or CREATED while pending)
 ```
 
 ## Step by step
@@ -30,8 +37,10 @@ sequenceDiagram
 
     | `APPLICATION_ID` | `NAME` | `SUBSCRIBER_ID` | `APPLICATION_TIER` | `APPLICATION_STATUS` | `TOKEN_TYPE` | `UUID` | `GROUP_ID` |
     |---|---|---|---|---|---|---|---|
-    | 1 | `DefaultApplication` | 1 | `Unlimited` | `APPROVED` | `JWT` | `4f1e…` | `NULL` |
-    | 2 | `PizzaMobileApp` | 1 | `10PerMin` | `APPROVED` | `JWT` | `9a7c…` | `NULL` |
+    | 1 | `DefaultApplication` | 1 | `Unlimited` | `APPROVED` | `JWT` | `2f17…` | `''` *(empty string)* |
+    | 2 | `PizzaApp` | 1 | `Unlimited` | `APPROVED` | `JWT` | `c798…` | `NULL` |
+
+    These are the real rows from the test run. The DefaultApplication has the description "This is the default application".
 
     - `SUBSCRIBER_ID` is a real FK to `AM_SUBSCRIBER` with `ON DELETE RESTRICT`: the owner can't be deleted while they own apps.
     - `(NAME, SUBSCRIBER_ID)` is unique, so one user can't have two apps with the same name. `UUID` is unique and is the ID used in REST APIs.
@@ -45,11 +54,13 @@ sequenceDiagram
     |---|---|---|---|
     | 2 | `External Reference Id` | `MOB-001` | -1234 |
 
+    This row is illustrative. The verification run sent no attributes, so nothing was written here.
+
     FK to `AM_APPLICATION` with `ON DELETE CASCADE`.
 
 4. **Sharing with a group (optional)** → [`AM_APPLICATION_GROUP_MAPPING`](../reference/am.md#am_application_group_mapping). If application sharing is enabled, for example by organization claim, each group that can see the app is a row (`APPLICATION_ID`, `GROUP_ID`, `TENANT`). FK with `ON DELETE CASCADE`. The older single-value `AM_APPLICATION.GROUP_ID` column is kept for backward compatibility.
 
-5. **Approval (optional)** → [`AM_WORKFLOWS`](../reference/am.md#am_workflows) with `WF_TYPE = 'AM_APPLICATION_CREATION'` and `WF_REFERENCE = '2'` (the `APPLICATION_ID`). The app stays `CREATED` until an admin approves it. See [Approval workflows](13-approval-workflows.md).
+5. **Approval (optional)** → [`AM_WORKFLOWS`](../reference/am.md#am_workflows) with `WF_TYPE = 'AM_APPLICATION_CREATION'` and `WF_REFERENCE` = the `APPLICATION_ID` as a string (`'3'` in the test run). The app stays `CREATED` until an admin approves it. See [Approval workflows](13-approval-workflows.md).
 
 ## What gets cleaned up
 

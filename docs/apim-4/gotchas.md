@@ -2,6 +2,9 @@
 
 These are the things that most often lead to wrong queries or wrong conclusions about the APIM 4.x database. Read them before you write any SQL.
 
+!!! success "Checked on a running server"
+    Items marked **(verified)** were confirmed on a real WSO2 APIM 4.7.0 server (embedded H2, default config) by comparing database snapshots before and after each flow.
+
 ## 1. There are two kinds of "API ID"
 
 | Column | Holds |
@@ -21,9 +24,14 @@ Rows that belong to the editable API (not a revision) are marked in different wa
 
 | Table | Marker for the current API |
 |---|---|
-| `AM_API_URL_MAPPING`, `AM_API_PRODUCT_MAPPING` | `REVISION_UUID IS NULL` |
-| `AM_API_ENDPOINTS`, `AM_API_PRIMARY_EP_MAPPING`, `AM_API_METADATA`, `AM_API_CLIENT_CERTIFICATE`, `AM_BACKEND` | `REVISION_UUID = 'Current API'` |
+| `AM_API_URL_MAPPING` | `REVISION_UUID IS NULL` (verified) |
+| `AM_API_AI_CONFIGURATION` | `API_REVISION_UUID IS NULL` (verified) |
+| `AM_API_PRODUCT_MAPPING`, `AM_API_PRIMARY_EP_MAPPING` | `REVISION_UUID = 'Current API'` (verified) |
+| `AM_API_ENDPOINTS`, `AM_API_METADATA`, `AM_API_CLIENT_CERTIFICATE`, `AM_BACKEND` | `REVISION_UUID = 'Current API'` |
 | `AM_API_SEQUENCE_BACKEND` | `REVISION_UUID = '0'` |
+
+!!! warning "API products overload `REVISION_UUID` (verified)"
+    When you add a resource to an API product, APIM **copies** the resource's `AM_API_URL_MAPPING` row. The copy keeps the *source API's* `API_ID`, and puts the **product's `API_ID`** (e.g. `'3'`) in `REVISION_UUID`. A query like "all resources of API 1" that ignores `REVISION_UUID` will also count the product copies.
 
 If you forget the filter, you'll see each resource once for the current API **plus once per revision**.
 
@@ -70,7 +78,7 @@ When you join across them, convert between the two. `UM_TENANT` maps `UM_ID` ↔
 
 | Delete this… | …and the database automatically deletes | …but it's **blocked** if |
 |---|---|---|
-| `AM_API` row | subscriptions, product mappings, lifecycle events, comments, ratings, revisions (→ deployment rows), endpoints, labels, API-level policy mappings. Not its URL mappings (see below). | it's listed in `AM_EXTERNAL_STORES` (RESTRICT) |
+| `AM_API` row | subscriptions, product mappings, lifecycle events, comments, ratings, revisions (→ deployment rows), endpoints, labels, API-level policy mappings. Not its URL mappings (see below). | it's listed in `AM_EXTERNAL_STORES` (RESTRICT), or has rows in `AM_API_METADATA`, `AM_API_AI_CONFIGURATION`, `AM_API_KEY_API_MAPPING` or `AM_BACKEND` (no ON DELETE rule). **APIM's code also refuses** while the API has subscriptions (HTTP 409, verified) |
 | `AM_APPLICATION` row | subscriptions, key mappings, registrations, attributes, group mappings | — |
 | `AM_SUBSCRIBER` row | — | the subscriber still owns applications, registrations or ratings (RESTRICT) |
 | `IDN_OAUTH_CONSUMER_APPS` row | access tokens, authorization codes, consumer secrets | — |
@@ -82,10 +90,26 @@ When you join across them, convert between the two. `UM_TENANT` maps `UM_ID` ↔
 ## 10. Not everything is in the database
 
 - Gateway environments defined in `deployment.toml` have **no** `AM_GATEWAY_ENVIRONMENT` row.
-- In 4.x, JWT access tokens are validated by signature. The gateway never reads `IDN_OAUTH2_ACCESS_TOKEN`, and token persistence can be switched off completely.
+- **JWT access tokens aren't stored by default (verified).** A `client_credentials` JWT for a JWT-type application left no `IDN_OAUTH2_ACCESS_TOKEN` row. The gateway validates it by signature. Only opaque tokens are stored. Revoking a JWT writes `AM_REVOKED_JWT` + `IDN_INVALID_TOKENS`.
+- **Calling an API writes nothing (verified).** `AM_SUBSCRIPTION.LAST_ACCESSED` stays `NULL`.
+- **API keys are stored only as a hash (verified).** `AM_API_KEY.API_KEY_HASH` looks like `$sha256$…`.
+- **`AM_SYSTEM_APPS` is empty** until someone logs into a portal web UI. REST-only use never fills it (verified).
+- **The super tenant has no `UM_TENANT` row (verified).**
+- **Workflow configuration lives in the registry** (`/_system/governance/apimgt/applicationdata/workflow-extensions.xml`), not in `AM_SYSTEM_CONFIGS` or tenant config (verified).
 - Analytics and usage data goes to the analytics platform, not to these tables.
 
-## 11. Some "unique" rules are enforced only in code
+## 11. Deployment state isn't where the table names suggest (verified)
+
+- `AM_GW_API_ARTIFACTS` and `AM_GW_PUBLISHED_API_DETAILS` are written when a **revision is created**, before anything is deployed. An artifact row doesn't mean the API is live.
+- `AM_DEPLOYED_REVISION` stayed **empty** after a successful deployment. The gateway's confirmation is in `AM_GW_REVISION_DEPLOYMENT` (`STATUS = 'SUCCESS'`, `ACTION = 'DEPLOY'`).
+- For the built-in `Default` environment, `AM_DEPLOYMENT_REVISION_MAPPING.VHOST` is stored as `NULL`.
+
+## 12. Status flags that don't change (verified)
+
+- `IS_DEPLOYED` stayed `0` on every throttling policy created through the Admin API, even though the policies were in use.
+- `AM_APPLICATION_REGISTRATION` gets a row on every key generation, even with no approval workflow. Don't read its rows as "pending".
+
+## 13. Some "unique" rules are enforced only in code
 
 For example, `AM_SUBSCRIPTION` has no UNIQUE constraint on (`APPLICATION_ID`, `API_ID`), and `AM_SCOPE` has none on (`NAME`, `TENANT_ID`). The application prevents duplicates. Hand-written inserts won't.
 

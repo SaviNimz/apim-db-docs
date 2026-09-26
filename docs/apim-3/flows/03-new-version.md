@@ -3,7 +3,14 @@
 !!! abstract "What happens"
     An API creator copies an existing API to a new version, such as PizzaShack `1.0.0` → `2.0.0`. APIM creates a brand-new API with its own rows. If the new version is marked as the *default version*, APIM also records that in `AM_API_DEFAULT_VERSION`.
 
-**Who:** Publisher · **Tables written:** `AM_API`, `AM_API_URL_MAPPING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_API_LC_EVENT`, `AM_API_DEFAULT_VERSION`, registry `REG_*` · **Tables read:** the old version's rows
+**Who:** Publisher · **Tables written:** `AM_API`, `AM_API_URL_MAPPING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_API_LC_EVENT`, `AM_API_DEFAULT_VERSION`, registry `REG_*`, `UM_PERMISSION`, `UM_ROLE_PERMISSION` · **Tables read:** the old version's rows
+
+!!! success "Verified on a running server"
+    Checked on WSO2 APIM 3.2.0 (H2, default config) by copying PizzaShackAPI 1.0.0 to 2.0.0 with *default version* on, and diffing the database.
+
+    - Written: a new `AM_API` row, two copied `AM_API_URL_MAPPING` rows, one copied `AM_API_RESOURCE_SCOPE_MAPPING` row, a `CREATED` lifecycle event, an `AM_API_DEFAULT_VERSION` row, and the registry copy.
+    - **No new scope row.** The copy reuses the existing `order:write` scope by name.
+    - Right after the copy, `PUBLISHED_DEFAULT_API_VERSION` was `NULL`, because nothing was published yet.
 
 ## The flow at a glance
 
@@ -31,22 +38,22 @@ sequenceDiagram
     | `API_ID` | `API_PROVIDER` | `API_NAME` | `API_VERSION` | `CONTEXT` |
     |---|---|---|---|---|
     | 1 | `admin` | `PizzaShackAPI` | `1.0.0` | `/pizzashack/1.0.0` |
-    | 7 | `admin` | `PizzaShackAPI` | `2.0.0` | `/pizzashack/2.0.0` |
+    | 2 | `admin` | `PizzaShackAPI` | `2.0.0` | `/pizzashack/2.0.0` |
 
-2. **Copied resources and scopes** → [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) and [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping). New rows with new `URL_MAPPING_ID`s, pointing at `API_ID = 7`. The scopes themselves are reused, because they're referenced by name.
+2. **Copied resources and scopes** → [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) and [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping). New rows with new `URL_MAPPING_ID`s (3 and 4 in the test run), pointing at `API_ID = 2`. No new `IDN_OAUTH2_SCOPE` row is written: the scopes themselves are reused, because they're referenced by name.
 
 3. **New registry artifact.** A copy of the old artifact at the new version's path, with a **new** `REG_UUID`, so the new version has its own API UUID. Documents and the definition file are copied too. See [Registry](../domains/registry.md).
 
-4. **Lifecycle** → [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event). The new version starts at `CREATED` (a new event row for `API_ID = 7`).
+4. **Lifecycle** → [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event). The new version starts at `CREATED` (a new event row for `API_ID = 2`, with `PREVIOUS_STATE = NULL`).
 
 5. **Default version (optional)** → [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version). This table has one row per API *name*, and it lets clients call `/pizzashack` with no version in the path.
 
     | `DEFAULT_VERSION_ID` | `API_NAME` | `API_PROVIDER` | `DEFAULT_API_VERSION` | `PUBLISHED_DEFAULT_API_VERSION` |
     |---|---|---|---|---|
-    | 1 | `PizzaShackAPI` | `admin` | `2.0.0` | `1.0.0` |
+    | 1 | `PizzaShackAPI` | `admin` | `2.0.0` | `NULL` |
 
     - `DEFAULT_API_VERSION` is the version marked as default in the Publisher.
-    - `PUBLISHED_DEFAULT_API_VERSION` is the default version that is actually *published*. It only moves to `2.0.0` when 2.0.0 is published.
+    - `PUBLISHED_DEFAULT_API_VERSION` is the default version that is actually *published*. It was `NULL` in the test run because neither version was published yet, and it only moves to `2.0.0` when 2.0.0 is published.
 
     !!! warning "Logical link (no foreign key)"
         `AM_API_DEFAULT_VERSION` links to `AM_API` by `API_NAME` + `API_PROVIDER` (and the version strings), not by `API_ID`.

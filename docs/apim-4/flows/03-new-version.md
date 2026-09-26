@@ -3,7 +3,13 @@
 !!! abstract "What happens"
     The creator copies an existing API into a new version, for example PizzaShack 1.0.0 → 2.0.0. In the database, a new version is simply **a brand-new API**: a new `AM_API` row with the same name and provider. It gets its own resources and scopes. Optionally, one version is marked as the *default version*.
 
-**Who:** API creator (Publisher) · **Tables written:** [`AM_API`](../reference/am.md#am_api), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), [`AM_API_ENDPOINTS`](../reference/am.md#am_api_endpoints), [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version) · **Tables read:** everything belonging to the source version
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by copying `PizzaShackAPI 1.0.0` to `2.0.0` with *default version* ticked. The copy wrote a new [`AM_API`](../reference/am.md#am_api) row, a new lifecycle event (`NULL → CREATED`), two new URL mappings, one scope mapping, one [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version) row, a new registry artifact and a governance request. Surprises:
+
+    - **No new scope.** [`AM_SCOPE`](../reference/am.md#am_scope) and [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope) were untouched, because both versions share the `order:write` scope by name.
+    - **`PUBLISHED_DEFAULT_API_VERSION` stays `NULL`** until a default version is actually published.
+
+**Who:** API creator (Publisher) · **Tables written:** [`AM_API`](../reference/am.md#am_api), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version), `GOV_ARTIFACT` / `GOV_REQUEST*`, `REG_*` · **Tables read:** everything belonging to the source version
 
 ## The flow at a glance
 
@@ -17,7 +23,7 @@ sequenceDiagram
     Creator->>Pub: New version 2.0.0 of PizzaShack
     Pub->>DB: read AM_API 1.0.0 and its children
     Pub->>DB: insert AM_API (new API_ID, new API_UUID)
-    Pub->>DB: copy URL mappings, scope mappings, endpoints
+    Pub->>DB: copy URL mappings and scope mappings
     Pub->>DB: upsert AM_API_DEFAULT_VERSION (if default)
     Pub-->>Creator: Version 2.0.0 created
 ```
@@ -29,12 +35,16 @@ sequenceDiagram
 
 1. **New API row.** A new row goes into [`AM_API`](../reference/am.md#am_api). It has the same `API_PROVIDER` and `API_NAME` but a new `API_VERSION`, a new `API_ID` and `API_UUID`, and a `CONTEXT` that includes the new version. `VERSION_COMPARABLE` holds a sortable form of the version string, so APIM can find the "latest" version.
 
-    | API_ID | API_NAME | API_VERSION | CONTEXT | STATUS |
-    |---|---|---|---|---|
-    | 7 | PizzaShackAPI | 1.0.0 | /pizzashack/1.0.0 | PUBLISHED |
-    | 12 | PizzaShackAPI | 2.0.0 | /pizzashack/2.0.0 | CREATED |
+    | API_ID | API_UUID | API_NAME | API_VERSION | CONTEXT | STATUS |
+    |---|---|---|---|---|---|
+    | 1 | `b41b…` | PizzaShackAPI | 1.0.0 | /pizzashack/1.0.0 | CREATED |
+    | 2 | `b887…` | PizzaShackAPI | 2.0.0 | /pizzashack/2.0.0 | CREATED |
 
-2. **Children copied.** The working copy's resources ([`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping)) are recreated under the new `API_ID`, together with their scope mappings, operation-policy mappings, endpoints and so on. The registry artifact is also copied.
+    A lifecycle event (`NULL → CREATED`) is logged for the new `API_ID` in [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event).
+
+2. **Children copied.** The working copy's resources ([`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping)) are recreated under the new `API_ID` (in the test, IDs 3 and 4), together with their scope mappings (`order:write` → URL mapping 4) and any operation-policy mappings. The registry artifact (including the endpoint config and OpenAPI definition) is copied too.
+    - The scope itself isn't copied. Both versions point at the same `AM_SCOPE` / `IDN_OAUTH2_SCOPE` row by name.
+    - The new version is registered for governance (`GOV_ARTIFACT` + `GOV_REQUEST`), just like a new API. See [Governance check](14-governance.md).
 
 3. **Default version (optional).** If the creator ticks **Make this the default version**, [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version) is updated. It holds **one row per API name + provider**:
     - `DEFAULT_API_VERSION` is the version that clients get when they call the context *without* a version, e.g. `/pizzashack/menu`.
@@ -42,7 +52,7 @@ sequenceDiagram
 
     | API_NAME | API_PROVIDER | DEFAULT_API_VERSION | PUBLISHED_DEFAULT_API_VERSION | ORGANIZATION |
     |---|---|---|---|---|
-    | PizzaShackAPI | admin | 2.0.0 | 1.0.0 | carbon.super |
+    | PizzaShackAPI | admin | 2.0.0 | *(null)* | carbon.super |
 
     !!! warning "Logical link (no foreign key)"
         `AM_API_DEFAULT_VERSION` links to [`AM_API`](../reference/am.md#am_api) by **name + provider + version strings**, not by id. Renaming or deleting versions relies on APIM's code to keep it consistent.

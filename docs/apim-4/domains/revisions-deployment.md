@@ -7,9 +7,17 @@
 
 In 4.x you never deploy "the API". You deploy **a revision of it**:
 
-1. **Create a revision.** APIM copies the current API: its resources, scopes, policies, endpoints and more. The copies are tagged with a new `REVISION_UUID`, and one row goes into `AM_REVISION`. An API can have up to five revisions at a time. The Publisher asks you to delete old ones.
-2. **Deploy it** to one or more **gateway environments**, such as "Default" or "Production Gateways", and pick a **VHost** (hostname) in each. APIM records the *request* in `AM_DEPLOYMENT_REVISION_MAPPING`.
-3. **The gateway syncs.** APIM builds the gateway artifact, stores it in `AM_GW_API_ARTIFACTS` and notifies the gateways. When a gateway confirms the deployment, APIM records it in `AM_DEPLOYED_REVISION`.
+1. **Create a revision.** APIM copies the current API: its resources, scopes, policies, endpoints and more. The copies are tagged with a new `REVISION_UUID`, and one row goes into `AM_REVISION`. **At the same moment** APIM builds the gateway artifact and stores it in `AM_GW_API_ARTIFACTS` (with a summary row in `AM_GW_PUBLISHED_API_DETAILS`). An API can have up to five revisions at a time. The Publisher asks you to delete old ones.
+2. **Deploy it** to one or more **gateway environments**, such as "Default" or "Production Gateways", and pick a **VHost** (hostname) in each. APIM records the *request* in `AM_DEPLOYMENT_REVISION_MAPPING` and the target label in `AM_GW_API_DEPLOYMENTS`, then notifies the gateways.
+3. **The gateway syncs.** Each gateway fetches the artifact and reports back. APIM records the result per gateway instance in `AM_GW_REVISION_DEPLOYMENT` (e.g. `SUCCESS` / `DEPLOY`).
+
+!!! success "Verified on a running server (APIM 4.7.0)"
+    - The artifact rows appeared at *revision creation*, not at deploy time.
+    - `AM_DEPLOYED_REVISION` was **never written**, not even after the gateway confirmed.
+    - The gateway's confirmation appeared in `AM_GW_REVISION_DEPLOYMENT`.
+    - For the built-in `Default` environment, `AM_DEPLOYMENT_REVISION_MAPPING.VHOST` was stored as `NULL`.
+
+    See [Deploy a revision](../flows/04-deploy-revision.md).
 
 This means you can keep editing the current API without touching live traffic. Only deploying a new revision changes what the gateways run.
 
@@ -24,7 +32,7 @@ erDiagram
     AM_API ||--o{ AM_REVISION : "snapshots"
     AM_REVISION ||--o| AM_API_REVISION_METADATA : "tier at snapshot time"
     AM_REVISION ||--o{ AM_DEPLOYMENT_REVISION_MAPPING : "requested on env"
-    AM_REVISION ||--o{ AM_DEPLOYED_REVISION : "confirmed on env"
+    AM_REVISION ||--o{ AM_DEPLOYED_REVISION : "legacy, unused in test"
 ```
 
 - All the FKs cascade. Deleting an API deletes its revisions, and deleting a revision deletes its deployment rows.
@@ -84,7 +92,7 @@ erDiagram
 | Column | What it means |
 |---|---|
 | `NAME` | Gateway environment **name**, e.g. `Default`. |
-| `VHOST` | Hostname chosen in that environment. |
+| `VHOST` | Hostname chosen in that environment. `NULL` for the config-file `Default` environment (verified). |
 | `REVISION_UUID` | Revision (FK → `AM_REVISION`, cascade). |
 | `REVISION_STATUS` | E.g. approved, or waiting for a deployment-approval [workflow](workflows.md). |
 | `DISPLAY_ON_DEVPORTAL` | Whether this environment's URL is shown in the Developer Portal. |
@@ -96,9 +104,9 @@ The primary key is (`NAME`, `REVISION_UUID`).
 
 ### AM_DEPLOYED_REVISION
 
-**One row =** "revision R is **actually running** on environment E". A gateway has acknowledged it. It has the same shape as above (`NAME`, `VHOST`, `REVISION_UUID`, `DEPLOYED_TIME`), with an FK → `AM_REVISION`, cascade.
+**One row =** by design, "revision R is running on environment E". It has the same shape as above (`NAME`, `VHOST`, `REVISION_UUID`, `DEPLOYED_TIME`), with an FK → `AM_REVISION`, cascade.
 
-**Watch out:** comparing this table with `AM_DEPLOYMENT_REVISION_MAPPING` tells you whether a deployment is still *pending*. The Publisher UI does exactly that.
+**Watch out:** on a real 4.7.0 server with the built-in gateway, this table stayed **empty** after a successful deployment. Don't use it to decide whether a revision is live. Use [`AM_GW_REVISION_DEPLOYMENT`](#am_gw_revision_deployment) for per-gateway confirmations, and `AM_DEPLOYMENT_REVISION_MAPPING` for what was requested.
 
 [Full column list](../reference/am.md#am_deployed_revision)
 
@@ -134,7 +142,7 @@ The primary key is (`NAME`, `REVISION_UUID`).
 
 ### AM_GW_PUBLISHED_API_DETAILS
 
-**One row =** a summary of an API that has gateway artifacts: `API_ID` (the **API UUID**), `API_NAME`, `API_VERSION`, `API_PROVIDER`, `API_TYPE` and `TENANT_DOMAIN`. Gateways read it to know what to load.
+**One row =** a summary of an API that has gateway artifacts: `API_ID` (the **API UUID**), `API_NAME`, `API_VERSION`, `API_PROVIDER`, `API_TYPE` and `TENANT_DOMAIN`. Gateways read it to know what to load. It's written when the first revision is **created**. In the test, `API_PROVIDER` was `NULL` and `API_TYPE` was `http`.
 
 **Watch out:** there's no FK to `AM_API`. `API_ID` = `AM_API.API_UUID` is a *logical link*.
 
@@ -142,7 +150,7 @@ The primary key is (`NAME`, `REVISION_UUID`).
 
 ### AM_GW_API_ARTIFACTS
 
-**One row =** the built **gateway artifact** for one revision of one API. That's the bundle a gateway downloads and deploys.
+**One row =** the built **gateway artifact** for one revision of one API. That's the bundle (a zip file) a gateway downloads and deploys. It's written when the revision is **created**, before any deployment.
 
 | Column | What it means |
 |---|---|
@@ -180,7 +188,7 @@ The primary key is (`NAME`, `REVISION_UUID`).
 | `GATEWAY_ID` | Instance (FK → `AM_GW_INSTANCES`, cascade). |
 | `API_ID` | API **UUID** (FK → `AM_API.API_UUID`, cascade). |
 | `REVISION_UUID` | Which revision the instance has. |
-| `ACTION`, `STATUS` | E.g. deploy/undeploy, and success/failure. |
+| `ACTION`, `STATUS` | E.g. `DEPLOY`/undeploy, and `SUCCESS`/failure. This is where a gateway's **confirmation** lands (verified). |
 | `LAST_UPDATED` | Epoch time. |
 
 [Full column list](../reference/am.md#am_gw_revision_deployment)
@@ -218,26 +226,27 @@ PizzaShackAPI revision 1 deployed to the `Default` environment:
 
 | Table | Row |
 |---|---|
-| `AM_REVISION` | `ID = 1`, `API_UUID = 5f1c…`, `REVISION_UUID = r-111` |
-| `AM_API_URL_MAPPING` | copies of every resource with `REVISION_UUID = r-111` |
-| `AM_DEPLOYMENT_REVISION_MAPPING` | `NAME = Default`, `VHOST = localhost`, `REVISION_UUID = r-111`, `DISPLAY_ON_DEVPORTAL = true` |
-| `AM_GW_PUBLISHED_API_DETAILS` | `API_ID = 5f1c…`, `API_NAME = PizzaShackAPI` |
-| `AM_GW_API_ARTIFACTS` | `API_ID = 5f1c…`, `REVISION_ID = r-111`, `ARTIFACT = <blob>` |
-| `AM_GW_API_DEPLOYMENTS` | `API_ID = 5f1c…`, `REVISION_ID = r-111`, `LABEL = Default`, `VHOST = localhost` |
-| `AM_DEPLOYED_REVISION` | `NAME = Default`, `REVISION_UUID = r-111` (after the gateway confirms) |
+| `AM_REVISION` | `ID = 1`, `API_UUID = b41b…`, `REVISION_UUID = 4b45…` |
+| `AM_API_URL_MAPPING` | copies of every resource with `REVISION_UUID = 4b45…` |
+| `AM_GW_PUBLISHED_API_DETAILS` | `API_ID = b41b…`, `API_NAME = PizzaShackAPI`, `API_TYPE = http` *(at revision creation)* |
+| `AM_GW_API_ARTIFACTS` | `API_ID = b41b…`, `REVISION_ID = 4b45…`, `ARTIFACT = <zip>` *(at revision creation)* |
+| `AM_DEPLOYMENT_REVISION_MAPPING` | `NAME = Default`, `VHOST = NULL`, `REVISION_UUID = 4b45…`, `REVISION_STATUS = APPROVED`, `DISPLAY_ON_DEVPORTAL = true` |
+| `AM_GW_API_DEPLOYMENTS` | `API_ID = b41b…`, `REVISION_ID = 4b45…`, `LABEL = Default`, `VHOST = NULL` |
+| `AM_GW_REVISION_DEPLOYMENT` | `GATEWAY_ID = 1`, `API_ID = b41b…`, `STATUS = SUCCESS`, `ACTION = DEPLOY` (after the gateway confirms) |
+
+These are real values from a 4.7.0 test server.
 
 ## Try it
 
 ```sql
--- Which revision of each API is requested vs confirmed on each environment?
+-- Which revision of each API is requested on each environment, and what did gateways report?
 SELECT a.API_NAME, a.API_VERSION, r.ID AS REVISION_NO, drm.NAME AS ENVIRONMENT,
-       drm.VHOST, drm.REVISION_STATUS,
-       CASE WHEN dr.REVISION_UUID IS NULL THEN 'pending' ELSE 'deployed' END AS STATE
+       drm.REVISION_STATUS, g.GATEWAY_ID, g.STATUS AS GATEWAY_STATUS, g.ACTION
 FROM AM_DEPLOYMENT_REVISION_MAPPING drm
 JOIN AM_REVISION r ON r.REVISION_UUID = drm.REVISION_UUID
 JOIN AM_API a ON a.API_UUID = r.API_UUID
-LEFT JOIN AM_DEPLOYED_REVISION dr
-  ON dr.REVISION_UUID = drm.REVISION_UUID AND dr.NAME = drm.NAME;
+LEFT JOIN AM_GW_REVISION_DEPLOYMENT g
+  ON g.REVISION_UUID = drm.REVISION_UUID AND g.API_ID = a.API_UUID;
 ```
 
 ## Related flows
@@ -246,4 +255,4 @@ LEFT JOIN AM_DEPLOYED_REVISION dr
 - [Change lifecycle state](../flows/05-lifecycle.md)
 
 !!! note "Different in 3.x"
-    3.x has no revisions or environment tables. Publishing wrote the artifact straight into `AM_GW_API_ARTIFACTS`, keyed by a **gateway label**, with a `PUBLISH`/`REMOVE` instruction. See [3.x Gateway publishing](../../apim-3/domains/gateway-publishing.md).
+    3.x has no revisions or environment tables. Publishing wrote the artifact straight into `AM_GW_API_ARTIFACTS`, keyed by a **gateway label**, with a `Publish`/`Remove` instruction (and only when the optional DB sync is enabled). See [3.x Gateway publishing](../../apim-3/domains/gateway-publishing.md).

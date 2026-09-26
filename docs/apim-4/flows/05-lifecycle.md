@@ -3,7 +3,10 @@
 !!! abstract "What happens"
     A publisher moves an API through its lifecycle, e.g. *Created → Published*. APIM updates the API's state, logs the change in `AM_API_LC_EVENT` and, if an approval workflow is switched on, waits for approval first. Publishing is what makes an API visible in the Developer Portal.
 
-**Who:** API publisher (Publisher portal) · **Tables written:** [`AM_API`](../reference/am.md#am_api) (`STATUS`), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), registry lifecycle properties (`REG_*`), optionally [`AM_WORKFLOWS`](../reference/am.md#am_workflows) · **Tables read:** [`AM_DEPLOYED_REVISION`](../reference/am.md#am_deployed_revision)
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by publishing `PizzaShackAPI 1.0.0` after deploying revision 1. The call updated `AM_API.STATUS` from `CREATED` to `PUBLISHED`, added exactly one [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event) row, and changed the registry artifact's properties. Nothing else changed: there were no gateway tables, because the gateway already had the revision, and no [`AM_API_LC_PUBLISH_EVENTS`](../reference/am.md#am_api_lc_publish_events) row.
+
+**Who:** API publisher (Publisher portal) · **Tables written:** [`AM_API`](../reference/am.md#am_api) (`STATUS`), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), registry lifecycle properties (`REG_*`), optionally [`AM_WORKFLOWS`](../reference/am.md#am_workflows) · **Tables read:** [`AM_DEPLOYMENT_REVISION_MAPPING`](../reference/am.md#am_deployment_revision_mapping)
 
 ## The lifecycle states
 
@@ -55,15 +58,17 @@ sequenceDiagram
 
     | EVENT_ID | API_ID | PREVIOUS_STATE | NEW_STATE | USER_ID | TENANT_ID | EVENT_DATE |
     |---|---|---|---|---|---|---|
-    | 1 | 7 | *(null)* | CREATED | admin | -1234 | 2026-09-01 10:00 |
-    | 2 | 7 | CREATED | PUBLISHED | admin | -1234 | 2026-09-01 10:20 |
+    | 1 | 1 | *(null)* | CREATED | admin | -1234 | 2026-09-26 10:46:37 |
+    | 3 | 1 | CREATED | PUBLISHED | admin | -1234 | 2026-09-26 10:47:28 |
+
+    Event 2 belongs to version 2.0.0 (API_ID 2), created in between.
 
     `API_ID` is a real FK to `AM_API.API_ID` with `ON DELETE CASCADE`, so an API's history disappears when the API is deleted.
 
 4. **Side effects.**
     - **Publishing a new version** can deprecate older versions, and can copy their subscriptions to the new version ([`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) rows under the new `API_ID`), if the publisher ticks those options.
     - **Publishing** also sets `PUBLISHED_DEFAULT_API_VERSION` in [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version) when this version is the default.
-    - [`AM_API_LC_PUBLISH_EVENTS`](../reference/am.md#am_api_lc_publish_events) (`TENANT_DOMAIN`, `API_ID`, `EVENT_TIME`) records publish events for external consumers. *(Exactly when this table is written depends on configuration; we're inferring it's tied to publish events.)*
+    - [`AM_API_LC_PUBLISH_EVENTS`](../reference/am.md#am_api_lc_publish_events) (`TENANT_DOMAIN`, `API_ID`, `EVENT_TIME`) is meant to record publish events for external consumers. It was **not** written when publishing in the test, and no shipped 4.7.0 code was found that uses it, so treat it as legacy.
 
 ## What gets cleaned up
 

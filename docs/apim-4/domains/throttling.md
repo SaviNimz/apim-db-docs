@@ -63,7 +63,7 @@ erDiagram
 | `MAX_COMPLEXITY`, `MAX_DEPTH` | GraphQL query limits. |
 | `CONNECTIONS_COUNT` | Limit for WebSocket/event APIs. |
 | `TOTAL_TOKEN_COUNT`, `PROMPT_TOKEN_COUNT`, `COMPLETION_TOKEN_COUNT` | AI API token quotas. |
-| `CUSTOM_ATTRIBUTES`, `IS_DEPLOYED` | Extra attributes, and whether the policy is pushed to the traffic manager. |
+| `CUSTOM_ATTRIBUTES`, `IS_DEPLOYED` | Extra attributes, and a "pushed to the traffic manager" flag. On 4.7.0 it stayed `0` for policies created through the Admin API, even while they were in use (verified), so don't rely on it. |
 
 [Full column list](../reference/am.md#am_policy_subscription)
 
@@ -83,7 +83,7 @@ erDiagram
 | `NAME`, `DISPLAY_NAME`, `DESCRIPTION` | `NAME` is unique per tenant. It's the value resources store. |
 | `DEFAULT_QUOTA_TYPE`, `DEFAULT_QUOTA`, `DEFAULT_QUOTA_UNIT`, `DEFAULT_UNIT_TIME`, `DEFAULT_TIME_UNIT` | The limit used when no condition group matches. |
 | `APPLICABLE_LEVEL` | `apiLevel` or `resourceLevel`. |
-| `IS_DEPLOYED` | Pushed to the traffic manager or not. |
+| `IS_DEPLOYED` | Meant to say whether the policy is pushed to the traffic manager. It stayed `0` in a 4.7.0 test (verified). |
 
 [Full column list](../reference/am.md#am_api_throttle_policy)
 

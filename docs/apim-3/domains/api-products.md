@@ -40,7 +40,8 @@ erDiagram
 
 **Watch out:**
 
-- Because the underlying API's URL mappings are re-created when that API is updated, APIM has to re-point product mappings after an API update.
+- Because the underlying API's URL mappings are re-created when that API is updated, APIM re-points product mappings after an API update. On a live 3.2.0 server, the mapping row was replaced (ID 1 → 2) and now pointed at the new `URL_MAPPING_ID` (1 → 6).
+- 3.2 **doesn't copy** the resource. The mapping points straight at the underlying API's own row. Creating a product also wrote no lifecycle event and no default-version row.
 - A product row in `AM_API` has `API_TYPE = 'APIProduct'`. Remember to filter it out when you count APIs.
 
 [Full column list](../reference/am.md#am_api_product_mapping)

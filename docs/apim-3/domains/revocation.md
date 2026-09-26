@@ -18,14 +18,14 @@ This diagram shows what a revocation writes.
 
 ```mermaid
 flowchart LR
-    R[Token revoked] --> T[IDN_OAUTH2_ACCESS_TOKEN: TOKEN_STATE = REVOKED]
-    R --> J[AM_REVOKED_JWT: signature + expiry]
+    R[Token revoked] --> T[Row moved from IDN_OAUTH2_ACCESS_TOKEN]
+    T --> A[IDN_OAUTH2_ACCESS_TOKEN_AUDIT]
+    R --> J[AM_REVOKED_JWT: token id + expiry]
     J --> G[Gateways reject the JWT]
-    T -. optional .-> A[IDN_OAUTH2_ACCESS_TOKEN_AUDIT]
 ```
 
-- The token row's state changes. If token cleanup is enabled, the row can be moved to the audit table.
-- For JWTs, the signature is stored in `AM_REVOKED_JWT`. It has **no FK** to the token row.
+- On a live 3.2.0 server, an explicit revoke (`/oauth2/revoke`) **deleted** the token row (and its scope rows) and inserted a copy into the audit table. A token that's merely replaced by a newer one stays in place with `TOKEN_STATE = 'REVOKED'`.
+- For JWTs, an entry is added to `AM_REVOKED_JWT`. It has **no FK** to the token row.
 
 ## The tables
 
@@ -35,14 +35,14 @@ flowchart LR
 
 | Column | What it means |
 |---|---|
-| `UUID` | Primary key: the token's unique id (its `jti`). |
-| `SIGNATURE` | The JWT signature. Gateways compare incoming tokens against it. |
+| `UUID` | Primary key. On the test server this was a fresh UUID for the revocation entry, not one of the token's own IDs. |
+| `SIGNATURE` | Identifies the revoked token. Despite the name, the live server stored the same short value as the token's `IDN_OAUTH2_ACCESS_TOKEN.ACCESS_TOKEN` (the JWT ID), not a signature string. |
 | `EXPIRY_TIMESTAMP` | When the token would expire anyway, in epoch milliseconds. Rows past this time are deleted. |
 | `TENANT_ID` | Tenant. |
 | `TOKEN_TYPE` | Kind of token, e.g. `JWT`. |
 | `TIME_CREATED` | When it was revoked. |
 
-**Connects to:** nothing by FK. It's matched to tokens by `jti` or signature (*logical*).
+**Connects to:** nothing by FK. `SIGNATURE` matches the revoked token's `ACCESS_TOKEN` value, now found in `IDN_OAUTH2_ACCESS_TOKEN_AUDIT` (*logical*).
 
 **Watch out:** `DELETE FROM AM_REVOKED_JWT WHERE EXPIRY_TIMESTAMP < ?` runs periodically, so the table only ever holds unexpired revocations.
 
@@ -50,15 +50,15 @@ flowchart LR
 
 Related tables explained elsewhere:
 
-- [`IDN_OAUTH2_ACCESS_TOKEN`](keys-tokens.md#idn_oauth2_access_token): `TOKEN_STATE` becomes `REVOKED`.
-- [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](keys-tokens.md#idn_oauth2_access_token_audit): the history of invalidated tokens.
+- [`IDN_OAUTH2_ACCESS_TOKEN`](keys-tokens.md#idn_oauth2_access_token): an explicitly revoked row is moved out; a superseded row gets `TOKEN_STATE = 'REVOKED'`.
+- [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](keys-tokens.md#idn_oauth2_access_token_audit): where explicitly revoked tokens go.
 - [`AM_BLOCK_CONDITIONS`](throttling.md#am_block_conditions): blocking a whole application, user, IP or API, rather than a single token.
 
 ## Example
 
 | `AM_REVOKED_JWT` | | |
 |---|---|---|
-| `UUID` = `b4f2…` (jti) | `EXPIRY_TIMESTAMP` = `1735689600000` | `TENANT_ID` = -1234 |
+| `UUID` = `51d3…` | `SIGNATURE` = `3427…` (the token's `ACCESS_TOKEN` value) | `EXPIRY_TIMESTAMP` = `1790403942044`, `TOKEN_TYPE` = `JWT` |
 
 ## Try it
 

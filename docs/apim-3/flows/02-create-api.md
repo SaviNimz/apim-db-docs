@@ -3,7 +3,14 @@
 !!! abstract "What happens"
     An API creator designs a new API in the Publisher: name, version, context, resources and scopes. APIM stores the core facts in `AM_API` and one row per resource in `AM_API_URL_MAPPING`, and writes the full API description to the registry.
 
-**Who:** Publisher (API creator) · **Tables written:** `AM_API`, `AM_API_URL_MAPPING`, `AM_SCOPE` / `IDN_OAUTH2_SCOPE`, `AM_SCOPE_BINDING` / `IDN_OAUTH2_SCOPE_BINDING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_API_LC_EVENT`, registry `REG_*` · **Tables read:** `AM_API_THROTTLE_POLICY`, `AM_SHARED_SCOPE`
+**Who:** Publisher (API creator) · **Tables written:** `AM_API`, `AM_API_URL_MAPPING`, `IDN_OAUTH2_SCOPE`, `IDN_OAUTH2_SCOPE_BINDING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_API_LC_EVENT`, registry `REG_*`, `UM_PERMISSION`, `UM_ROLE_PERMISSION` · **Tables read:** `AM_API_THROTTLE_POLICY`, `AM_SHARED_SCOPE`
+
+!!! success "Verified on a running server"
+    Checked on WSO2 APIM 3.2.0 (H2, default config) by creating PizzaShackAPI 1.0.0 through the Publisher REST API, with two resources and one scope, and diffing the database.
+
+    - Written: one `AM_API` row, one `AM_API_LC_EVENT` row, two `AM_API_URL_MAPPING` rows, one `AM_API_RESOURCE_SCOPE_MAPPING` row, one `IDN_OAUTH2_SCOPE` row with its `IDN_OAUTH2_SCOPE_BINDING`, the registry artifact (`REG_*`) and registry permissions (`UM_PERMISSION`, `UM_ROLE_PERMISSION`).
+    - **`AM_SCOPE` and `AM_SCOPE_BINDING` were not written.** In 3.2 the scope lives only in `IDN_OAUTH2_SCOPE`.
+    - `CONTEXT_TEMPLATE` was stored as `/pizzashack`, not `/pizzashack/{version}`.
 
 ## The flow at a glance
 
@@ -20,7 +27,7 @@ sequenceDiagram
     Pub->>DB: insert AM_API
     Pub->>DB: insert AM_API_URL_MAPPING (one per resource)
     Creator->>Pub: Add scope, attach to resource
-    Pub->>DB: insert AM_SCOPE + AM_API_RESOURCE_SCOPE_MAPPING
+    Pub->>DB: insert IDN_OAUTH2_SCOPE + AM_API_RESOURCE_SCOPE_MAPPING
     Pub->>DB: insert AM_API_LC_EVENT (to CREATED)
 ```
 
@@ -41,7 +48,9 @@ sequenceDiagram
 
     | `API_ID` | `API_PROVIDER` | `API_NAME` | `API_VERSION` | `CONTEXT` | `CONTEXT_TEMPLATE` | `API_TYPE` | `API_TIER` |
     |---|---|---|---|---|---|---|---|
-    | 1 | `admin` | `PizzaShackAPI` | `1.0.0` | `/pizzashack/1.0.0` | `/pizzashack/{version}` | `HTTP` | `NULL` |
+    | 1 | `admin` | `PizzaShackAPI` | `1.0.0` | `/pizzashack/1.0.0` | `/pizzashack` | `HTTP` | `Unlimited` |
+
+    These are the real values from the test run. The 3.2 `AM_API` table has only 12 columns: there is no UUID and no status column. Its last four columns are `CREATED_BY`, `CREATED_TIME`, `UPDATED_BY` and `UPDATED_TIME`, and `UPDATED_*` stay `NULL` until the first edit.
 
     - `(API_PROVIDER, API_NAME, API_VERSION)` is unique.
     - `API_TYPE` is `HTTP`, `WS`, `SOAP`, `SOAPTOREST`, `GRAPHQL`, `SSE`, `WEBSUB`, or `APIProduct` for products.
@@ -51,27 +60,35 @@ sequenceDiagram
 
     | `URL_MAPPING_ID` | `API_ID` | `HTTP_METHOD` | `URL_PATTERN` | `AUTH_SCHEME` | `THROTTLING_TIER` |
     |---|---|---|---|---|---|
-    | 11 | 1 | `GET` | `/menu` | `Any` | `Unlimited` |
-    | 12 | 1 | `POST` | `/order` | `Any` | `10KPerMin` |
-    | 13 | 1 | `GET` | `/order/{orderId}` | `Any` | `Unlimited` |
+    | 1 | 1 | `GET` | `/menu` | `Any` | `Unlimited` |
+    | 2 | 1 | `POST` | `/order` | `Any` | `Unlimited` |
 
-    - `AUTH_SCHEME` is `Any` (security on) or `None` (open resource).
+    - `AUTH_SCHEME` is `Any` (security on) or `None` (open resource). In the test run, the rows created with the API said `Any`. After the API was later updated, the recreated rows said `Application & Application User`, which is the value sent in the request.
     - `THROTTLING_TIER` is a resource-level policy name, linking to `AM_API_THROTTLE_POLICY.NAME` *(logical)*.
     - `MEDIATION_SCRIPT` holds per-resource mediation (for example, generated mock-API scripts).
 
     !!! warning "Logical link (no foreign key)"
         `AM_API_URL_MAPPING.API_ID` points to `AM_API.API_ID`, but the database does not enforce it. Deleting an API relies on APIM's code to remove these rows.
 
-4. **Scopes** → [`AM_SCOPE`](../reference/am.md#am_scope) + [`AM_SCOPE_BINDING`](../reference/am.md#am_scope_binding) (role bindings), with the OAuth side in [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope) + [`IDN_OAUTH2_SCOPE_BINDING`](../reference/idn.md#idn_oauth2_scope_binding).
-    - Example: scope `order:write`, bound to role `Internal/subscriber`, with `SCOPE_TYPE` like `OAUTH2` or `SHARED`.
+    !!! warning "URL mapping IDs are not stable"
+        Every time the API is **updated**, APIM deletes all of its `AM_API_URL_MAPPING` rows and inserts new ones with **new IDs**. It then re-points `AM_API_RESOURCE_SCOPE_MAPPING` and `AM_API_PRODUCT_MAPPING` to the new rows. The same happens to the API's `IDN_OAUTH2_SCOPE` row, which gets a new `SCOPE_ID`. This was seen in the test run, where IDs 1–2 became 5–6. Never store a `URL_MAPPING_ID` outside APIM.
+
+4. **Scopes** → [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope) + [`IDN_OAUTH2_SCOPE_BINDING`](../reference/idn.md#idn_oauth2_scope_binding) (role bindings).
+
+    | `SCOPE_ID` | `NAME` | `DISPLAY_NAME` | `DESCRIPTION` | `TENANT_ID` | `SCOPE_TYPE` |
+    |---|---|---|---|---|---|
+    | 176 | `order:write` | `order:write` | `Place orders` | -1234 | `OAUTH2` |
+
+    - The binding row is `(176, 'admin', 'DEFAULT')`: scope 176 is granted to role `admin`.
+    - The ID is 176 because startup already stored 175 scopes (see [Setup & first user](01-bootstrap.md)).
     - A *shared* scope (reusable across APIs) also has a row in [`AM_SHARED_SCOPE`](../reference/am.md#am_shared_scope) (`NAME`, `UUID`, `TENANT_ID`).
-    - `AM_SCOPE` and `IDN_OAUTH2_SCOPE` have the same shape. Which one holds the data depends on the Key Manager setup, so check both when looking for a scope. The key is `NAME` + `TENANT_ID`.
+    - [`AM_SCOPE`](../reference/am.md#am_scope) and [`AM_SCOPE_BINDING`](../reference/am.md#am_scope_binding) exist in the 3.2 schema but were **not written**. Look in `IDN_OAUTH2_SCOPE`.
 
 5. **Resource ↔ scope link** → [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping).
 
     | `SCOPE_NAME` | `URL_MAPPING_ID` | `TENANT_ID` |
     |---|---|---|
-    | `order:write` | 12 | -1234 |
+    | `order:write` | 2 | -1234 |
 
     - `URL_MAPPING_ID` is a real FK to `AM_API_URL_MAPPING` with `ON DELETE CASCADE`.
     - `SCOPE_NAME` links to the scope **by name** *(logical)*.

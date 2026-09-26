@@ -11,6 +11,13 @@ By default everything in APIM happens instantly. An admin can switch on approval
 2. An approver sees the task in the Admin Portal (or an external BPMN engine does) and approves or rejects it.
 3. APIM updates the `AM_WORKFLOWS` row (`APPROVED` or `REJECTED`) and finishes the original action. In this example it sets the subscription to `UNBLOCKED` or `REJECTED`.
 
+!!! success "Verified on a running server (APIM 4.7.0)"
+    - With the default "simple" executors, no `AM_WORKFLOWS` row is written at all.
+    - The executors are switched in the **registry** resource `/_system/governance/apimgt/applicationdata/workflow-extensions.xml`, not in the Admin Portal's tenant config.
+    - After switching application and subscription creation to their approval executors, a new app sat at `CREATED` and a new subscription at `ON_HOLD`, each with an `AM_WORKFLOWS` row (`WF_REFERENCE` = the integer ID as text). Approving them through the Admin API, which identifies each task by `WF_EXTERNAL_REFERENCE`, flipped them to `APPROVED` / `UNBLOCKED`.
+
+    See [Approval workflows](../flows/13-approval-workflows.md).
+
 The same pattern works for many actions. `WF_TYPE` says which one, and `WF_REFERENCE` holds the ID of the thing being approved.
 
 | `WF_TYPE` (examples) | `WF_REFERENCE` points at |

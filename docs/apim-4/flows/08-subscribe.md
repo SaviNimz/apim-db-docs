@@ -3,6 +3,9 @@
 !!! abstract "What happens"
     A developer subscribes one of their applications to a published API and picks a **subscription tier**, e.g. Gold. APIM stores one row in `AM_SUBSCRIPTION` that joins the application to the API. That row is the "permission slip" the gateway checks on every call.
 
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by subscribing `PizzaApp` to `PizzaShackAPI 1.0.0` on the `Gold` tier. With no workflow, the call wrote exactly **one** row: [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), saved straight away as `SUB_STATUS = 'UNBLOCKED'`, `SUBS_CREATE_STATE = 'SUBSCRIBE'`. With the approval workflow on, a second subscription was saved as `ON_HOLD` together with an [`AM_WORKFLOWS`](../reference/am.md#am_workflows) row, and approval flipped it to `UNBLOCKED`. Unsubscribing deleted the row.
+
 **Who:** Developer (Dev Portal) · **Tables written:** [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), optionally [`AM_WORKFLOWS`](../reference/am.md#am_workflows) · **Tables read:** [`AM_API`](../reference/am.md#am_api), [`AM_APPLICATION`](../reference/am.md#am_application), [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription), [`AM_TIER_PERMISSIONS`](../reference/am.md#am_tier_permissions)
 
 ## How the tables connect
@@ -27,11 +30,10 @@ sequenceDiagram
     participant Portal as Dev Portal
     participant DB as APIM DB
     participant GW as Gateway
-    Dev->>Portal: Subscribe PizzaMobile to PizzaShack (Gold)
+    Dev->>Portal: Subscribe PizzaApp to PizzaShack (Gold)
     Portal->>DB: check tier allowed (AM_TIER_PERMISSIONS)
-    Portal->>DB: insert AM_SUBSCRIPTION (ON_HOLD)
-    Portal->>DB: insert AM_WORKFLOWS (if approval on)
-    Portal->>DB: update SUB_STATUS = UNBLOCKED
+    Portal->>DB: insert AM_SUBSCRIPTION (UNBLOCKED, or ON_HOLD if approval on)
+    Portal->>DB: insert AM_WORKFLOWS (only if approval on)
     Portal-->>GW: event "subscription created"
     Portal-->>Dev: Subscribed
 ```
@@ -48,13 +50,15 @@ sequenceDiagram
     - `APPLICATION_ID` → [`AM_APPLICATION`](../reference/am.md#am_application) (FK, cascade).
     - `API_ID` → [`AM_API`](../reference/am.md#am_api) (FK, cascade). This works for API products too.
     - `TIER_ID` → the tier name, e.g. `Gold`.
-    - `SUB_STATUS` → `ON_HOLD` while waiting for approval, then `UNBLOCKED`.
+    - `SUB_STATUS` → `UNBLOCKED` straight away, or `ON_HOLD` while waiting for approval.
     - `SUBS_CREATE_STATE` → `SUBSCRIBE`.
     - `UUID` → used by the REST APIs.
 
     | SUBSCRIPTION_ID | APPLICATION_ID | API_ID | TIER_ID | SUB_STATUS | SUBS_CREATE_STATE | UUID |
     |---|---|---|---|---|---|---|
-    | 31 | 2 *(PizzaMobile)* | 7 *(PizzaShack 1.0.0)* | Gold | UNBLOCKED | SUBSCRIBE | `e5f6…` |
+    | 1 | 2 *(PizzaApp)* | 1 *(PizzaShack 1.0.0)* | Gold | UNBLOCKED | SUBSCRIBE | `1e67…` |
+
+    `TIER_ID_PENDING` is filled in too (`Gold`), and `LAST_ACCESSED` stays `NULL`.
 
     !!! warning "Logical link (no foreign key)"
         `AM_SUBSCRIPTION.TIER_ID` matches [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription)`.NAME` for the same tenant. Deleting a tier doesn't touch existing subscriptions. APIM blocks that delete in code instead.
@@ -71,8 +75,9 @@ sequenceDiagram
 
 ## What gets cleaned up
 
-- Deleting either the application **or** the API cascades and removes the subscription.
-- Unsubscribing removes the row and sends an event, so the gateways drop it from memory.
+- Deleting the application cascades and removes its subscriptions.
+- The FK to `AM_API` would cascade too, but **APIM refuses to delete an API that still has subscriptions** (HTTP 409, "active subscriptions exist"). You have to remove the subscriptions first.
+- Unsubscribing deletes the row (verified) and sends an event, so the gateways drop it from memory.
 
 ## Try it
 

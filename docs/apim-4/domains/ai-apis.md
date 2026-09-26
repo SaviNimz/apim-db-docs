@@ -65,8 +65,16 @@ erDiagram
 |---|---|
 | `AI_CONFIGURATION_UUID` | Primary key. |
 | `API_UUID` | The API (FK → `AM_API.API_UUID`). |
-| `API_REVISION_UUID` | Which copy of the API. It's a logical link to `AM_REVISION`. |
+| `API_REVISION_UUID` | Which copy of the API. It's a logical link to `AM_REVISION`, and **`NULL` for the current copy** (verified). |
 | `LLM_PROVIDER_UUID` | The provider (FK → `AM_LLM_PROVIDER`). |
+
+!!! success "Verified on a running server (APIM 4.7.0)"
+    Creating `ChatAPI` on the built-in OpenAI 2.0.0 provider wrote:
+    - `AM_API` with `API_TYPE = 'HTTP'` and `API_SUBTYPE = 'AIAPI'`,
+    - one row here (`API_REVISION_UUID = NULL`, `LLM_PROVIDER_UUID = 4d78…`),
+    - an `AM_API_PRIMARY_EP_MAPPING` row pointing at `default_production_endpoint`.
+
+    No `AM_API_ENDPOINTS` row was written. See [Create an AI API](../flows/15-ai-api.md).
 
 [Full column list](../reference/am.md#am_api_ai_configuration)
 

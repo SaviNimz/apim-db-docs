@@ -3,6 +3,17 @@
 !!! abstract "What happens"
     An admin can put an approval step in front of certain actions, such as creating an application or subscribing to an API. When someone performs the action, APIM saves it in a "waiting" state and records a **workflow** row in `AM_WORKFLOWS`. When an approver approves or rejects it in the Admin Portal, APIM finishes (or cancels) the original action.
 
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config). The test switched *Application creation* and *Subscription creation* to their approval executors, created a pending app and a pending subscription, and approved both through the Admin REST API.
+    - The pending app was saved with `APPLICATION_STATUS = 'CREATED'`, and the pending subscription with `SUB_STATUS = 'ON_HOLD'`. Each got an [`AM_WORKFLOWS`](../reference/am.md#am_workflows) row with `WF_STATUS = 'CREATED'`.
+    - Approval flipped them to `APPROVED` and `UNBLOCKED`, and set `WF_STATUS = 'APPROVED'`, replacing `WF_STATUS_DESC` with the approver's note.
+
+    Surprises:
+
+    - **Workflows aren't configured in tenant settings.** The executors live in a registry file, `/_system/governance/apimgt/applicationdata/workflow-extensions.xml`. Changing it only touches `REG_CONTENT` / `REG_RESOURCE`.
+    - **The Admin REST API refers to workflows by `WF_EXTERNAL_REFERENCE`** (a UUID), not by `WF_ID` or `WF_REFERENCE`.
+    - With the default "simple" executors, **no `AM_WORKFLOWS` row is written at all**.
+
 **Who:** The person doing the action, then an approver (Admin Portal) · **Tables written:** [`AM_WORKFLOWS`](../reference/am.md#am_workflows), plus the status column of the gated table · **Tables read:** the gated table
 
 ## The flow at a glance
@@ -25,7 +36,8 @@ sequenceDiagram
 ```
 
 - The gated row always exists *before* approval, so the workflow row can point at it.
-- If there's no workflow configured, the "simple" executor approves instantly, and no row may be kept.
+- If there's no workflow configured, the "simple" executor approves instantly, and no `AM_WORKFLOWS` row is written (verified).
+- Which executor runs for each action is set in the registry resource `/_system/governance/apimgt/applicationdata/workflow-extensions.xml`, for example `ApplicationCreationSimpleWorkflowExecutor` → `ApplicationCreationApprovalWorkflowExecutor`.
 
 ## Step by step
 
@@ -33,17 +45,18 @@ sequenceDiagram
 
 2. **Workflow row.** One row goes into [`AM_WORKFLOWS`](../reference/am.md#am_workflows):
     - `WF_TYPE` says *what* is waiting (see the table below).
-    - `WF_REFERENCE` is the id of the waiting thing.
+    - `WF_REFERENCE` is the id of the waiting thing, stored as text (e.g. `'3'` for `APPLICATION_ID` 3).
     - `WF_STATUS` is `CREATED`, then `APPROVED` or `REJECTED`.
-    - `WF_EXTERNAL_REFERENCE` is a unique id used by the approval engine.
+    - `WF_EXTERNAL_REFERENCE` is a unique UUID. The approval engine and the Admin REST API (`/workflows/update-workflow-status?workflowReferenceId=…`) use it.
     - `WF_METADATA` / `WF_PROPERTIES` hold details shown to the approver.
-    - `WF_STATUS_DESC` holds the approver's comment.
+    - `WF_STATUS_DESC` starts as a description of the request ("Approve application PendingApp creation request from application creator - admin …"), and is replaced by the approver's comment.
 
-    | WF_ID | WF_TYPE | WF_REFERENCE | WF_STATUS | WF_EXTERNAL_REFERENCE | TENANT_DOMAIN |
+    | WF_ID | WF_REFERENCE | WF_TYPE | WF_STATUS | WF_EXTERNAL_REFERENCE | TENANT_DOMAIN |
     |---|---|---|---|---|---|
-    | 3 | AM_SUBSCRIPTION_CREATION | 31 | APPROVED | `7c2d…` | carbon.super |
+    | 1 | 3 *(PendingApp)* | AM_APPLICATION_CREATION | CREATED → APPROVED | `f76f…` | carbon.super |
+    | 2 | 2 *(subscription 2)* | AM_SUBSCRIPTION_CREATION | CREATED → APPROVED | `1ff1…` | carbon.super |
 
-3. **Decision.** The approver acts in the Admin Portal (or an external BPMN engine calls back). `WF_STATUS` and `WF_UPDATED_TIME` are updated, and APIM completes or cancels the original action.
+3. **Decision.** The approver acts in the Admin Portal (or an external BPMN engine calls back). `WF_STATUS` and `WF_STATUS_DESC` are updated, and APIM completes or cancels the original action. In the test the app went `CREATED → APPROVED` and the subscription `ON_HOLD → UNBLOCKED`.
 
 ## Workflow types and what they point at
 

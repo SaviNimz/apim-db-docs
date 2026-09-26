@@ -49,6 +49,8 @@ erDiagram
 - `IDN_OAUTH2_RESOURCE_SCOPE`: one to many, FK, cascade.
 - `AM_API_RESOURCE_SCOPE_MAPPING`: by `NAME` + `TENANT_ID` (*logical*).
 
+**Watch out:** on a live 3.2.0 server this table wasn't empty on a fresh install. Startup wrote **175 rows**: the OIDC scopes plus every `apim:*` scope of APIM's own REST APIs, with 170 role bindings in `IDN_OAUTH2_SCOPE_BINDING`. API scopes you create are added after these (`SCOPE_ID` 176 onwards), and are recreated with a new `SCOPE_ID` whenever the API is updated.
+
 [Full column list](../reference/idn.md#idn_oauth2_scope)
 
 ### IDN_OAUTH2_SCOPE_BINDING

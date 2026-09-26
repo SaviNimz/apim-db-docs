@@ -1,13 +1,20 @@
 # Setup & first user
 
 !!! abstract "What happens"
-    When APIM starts for the first time, it fills in the rows everything else depends on: the super tenant, the admin user, a few internal OAuth apps, the built-in Key Manager and the default rate-limit tiers. Later, the first time a user opens the Developer Portal, APIM creates a *subscriber* row for them.
+    The first time APIM starts, it fills in the rows everything else depends on: the admin user and roles, the built-in Key Manager, the default rate-limit tiers, the built-in operation policies, the LLM providers and the default governance rules. Later, the first time a user does something in the Developer Portal, APIM creates a *subscriber* row for them and a **DefaultApplication**.
 
-**Who:** APIM server at startup, then each user on first login · **Tables written:** [`UM_TENANT`](../reference/um.md#um_tenant), [`UM_USER`](../reference/um.md#um_user), [`AM_SYSTEM_APPS`](../reference/am.md#am_system_apps), [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager), `AM_POLICY_*`, [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber) · **Tables read:** [`UM_USER_ROLE`](../reference/um.md#um_user_role)
+!!! success "Verified on a running server"
+    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by comparing the database before and after the first startup, and after the first Dev Portal call. Surprises:
+
+    - **`UM_TENANT` stays empty.** The super tenant `carbon.super` (`-1234`) has no row.
+    - **`AM_SYSTEM_APPS` stays empty** after startup and after REST calls. It's only filled in when someone logs into the Publisher, Dev Portal or Admin Portal web UI.
+    - **Startup seeds more than you'd expect:** 18 subscription tiers (including Async and AI tiers), 56 operation policies, 9 LLM providers with 26 models, and a governance policy with 4 rulesets and 89 rules.
+
+**Who:** APIM server at startup, then each user on first Dev Portal action · **Tables written:** [`UM_USER`](../reference/um.md#um_user), [`UM_ROLE`](../reference/um.md#um_role), [`UM_HYBRID_ROLE`](../reference/um.md#um_hybrid_role), [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager), `AM_POLICY_*`, [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy), [`AM_OPERATION_POLICY`](../reference/am.md#am_operation_policy), [`AM_LLM_PROVIDER`](../reference/am.md#am_llm_provider), `GOV_*`, [`AM_GW_INSTANCES`](../reference/am.md#am_gw_instances), [`AM_SYSTEM_CONFIGS`](../reference/am.md#am_system_configs), [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber), [`AM_APPLICATION`](../reference/am.md#am_application) · **Tables read:** [`UM_USER_ROLE`](../reference/um.md#um_user_role)
 
 ## The flow at a glance
 
-This diagram shows the two moments that create "starter" data: server startup, and a user's first visit to the Developer Portal.
+This diagram shows the two moments that create "starter" data: server startup, and a user's first action in the Developer Portal.
 
 ```mermaid
 sequenceDiagram
@@ -16,11 +23,11 @@ sequenceDiagram
     actor User as Developer
     participant Portal as Dev Portal
     Server->>DB: Create admin user and roles (UM_*)
-    Server->>DB: Register internal apps (AM_SYSTEM_APPS)
     Server->>DB: Add Resident Key Manager (AM_KEY_MANAGER)
     Server->>DB: Add default tiers (AM_POLICY_*)
-    User->>Portal: First login
-    Portal->>DB: insert AM_SUBSCRIBER
+    Server->>DB: Add operation policies, LLM providers, governance rules
+    User->>Portal: First action (e.g. create an app)
+    Portal->>DB: insert AM_SUBSCRIBER + DefaultApplication
 ```
 
 - The first four messages happen once, the first time the server starts against an empty database.
@@ -28,41 +35,46 @@ sequenceDiagram
 
 ## Step by step
 
-!!! info "Most starter data comes from code, not SQL"
-    In 4.7.0, the database scripts only insert a handful of rows (for example [`AM_ALERT_TYPES`](../reference/am.md#am_alert_types) and a few Identity Server lookup tables). The admin user, system apps, Key Manager and default tiers are all created **by the server at startup**. The exact order below is inferred from how APIM behaves, not from the SQL.
+!!! info "Starter data comes from code, not SQL"
+    The 4.7.0 database scripts only insert a handful of lookup rows, such as the 7 [`AM_ALERT_TYPES`](../reference/am.md#am_alert_types). Everything below is created **by the server at startup**.
 
-1. **Super tenant and admin user.** The shared DB's user store tables are populated.
-    - The super tenant `carbon.super` has the fixed tenant ID **`-1234`**. In the JDBC user store it doesn't get a row in [`UM_TENANT`](../reference/um.md#um_tenant); only *extra* tenants do (`UM_ID`, `UM_DOMAIN_NAME`, `UM_ACTIVE`).
-    - The admin user goes into [`UM_USER`](../reference/um.md#um_user) (`UM_USER_NAME = 'admin'`, `UM_TENANT_ID = -1234`), and roles such as `admin` and `Internal/subscriber` go into [`UM_ROLE`](../reference/um.md#um_role), [`UM_HYBRID_ROLE`](../reference/um.md#um_hybrid_role) and the user-role mapping tables.
+1. **Admin user and roles.** The shared DB's user store tables are populated.
+    - The super tenant `carbon.super` has the fixed tenant ID **`-1234`** and **no row** in [`UM_TENANT`](../reference/um.md#um_tenant). Only *extra* tenants get a row there.
+    - [`UM_USER`](../reference/um.md#um_user) gets two users: `admin`, and an internal `apim_reserved_user`. [`UM_ROLE`](../reference/um.md#um_role) gets `admin`, and [`UM_HYBRID_ROLE`](../reference/um.md#um_hybrid_role) gets the internal roles: `everyone`, `system`, `publisher`, `creator`, `subscriber`, `devops`, `observer`, `integration_dev` and `analytics`.
+    - [`UM_PERMISSION`](../reference/um.md#um_permission) and [`UM_ROLE_PERMISSION`](../reference/um.md#um_role_permission) get the permission tree, and the registry (`REG_*`) gets its base folders (around 500 resources).
 
     | UM_USER.UM_USER_NAME | UM_TENANT_ID |
     |---|---|
     | admin | -1234 |
+    | apim_reserved_user | -1234 |
 
-2. **Internal OAuth apps.** The Publisher, Dev Portal and Admin Portal are single-page apps, and each needs its own OAuth client to call APIM's REST APIs. Their keys are stored in [`AM_SYSTEM_APPS`](../reference/am.md#am_system_apps) (`NAME`, `CONSUMER_KEY`, `CONSUMER_SECRET`, `TENANT_DOMAIN`). The matching OAuth client rows are in [`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps).
+2. **Resident Key Manager.** One row goes into [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager): `NAME = 'Resident Key Manager'`, `TYPE = 'default'`, `ORGANIZATION = 'carbon.super'`, and a generated `UUID` such as `b446…`. Its settings (token endpoint, grant types and so on) live in the `CONFIGURATION` blob. Other tables refer to this Key Manager by its **UUID**.
 
-    | NAME | CONSUMER_KEY | TENANT_DOMAIN |
-    |---|---|---|
-    | apim_devportal | `x7Kp…` | carbon.super |
-    | apim_publisher | `Qa2m…` | carbon.super |
+3. **Default tiers.** The default rate-limit policies are inserted:
+    - 18 subscription tiers into [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription): `Gold`, `Silver`, `Bronze`, `Unauthenticated`, `DefaultSubscriptionless` and `Unlimited`, plus the `Async*` and `AsyncWH*` event tiers and the `AIGold` / `AISilver` / `AIBronze` token tiers;
+    - `50PerMin`, `20PerMin`, `10PerMin` and `Unlimited` into [`AM_POLICY_APPLICATION`](../reference/am.md#am_policy_application);
+    - `50KPerMin`, `20KPerMin`, `10KPerMin` and `Unlimited` into [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy).
 
-3. **Resident Key Manager.** One row is added to [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager) with `NAME = 'Resident Key Manager'`, `TYPE = 'default'`, `ORGANIZATION = 'carbon.super'`, and a generated `UUID`. Its settings (token endpoint, grant types and so on) live in the `CONFIGURATION` blob.
+    All of them are keyed by `(NAME, TENANT_ID)`. No custom (global) policy is created.
 
-4. **Default tiers.** The default rate-limit policies are inserted:
-    - subscription tiers such as `Gold`, `Silver`, `Bronze`, `Unlimited` and `Unauthenticated` into [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription),
-    - application tiers such as `10PerMin` and `Unlimited` into [`AM_POLICY_APPLICATION`](../reference/am.md#am_policy_application),
-    - resource tiers such as `10KPerMin` and `Unlimited` into [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy).
+4. **Other built-in content.**
+    - 56 built-in operation policies go into [`AM_OPERATION_POLICY`](../reference/am.md#am_operation_policy), [`AM_OPERATION_POLICY_DEFINITION`](../reference/am.md#am_operation_policy_definition) and [`AM_COMMON_OPERATION_POLICY`](../reference/am.md#am_common_operation_policy).
+    - 9 LLM providers (OpenAI, Azure OpenAI, Anthropic, Gemini, Mistral, AWS Bedrock and others) go into [`AM_LLM_PROVIDER`](../reference/am.md#am_llm_provider), with 26 models in [`AM_LLM_PROVIDER_MODEL`](../reference/am.md#am_llm_provider_model).
+    - The governance policy *WSO2 API Management Best Practices* goes into [`GOV_POLICY`](../reference/gov.md#gov_policy). It's linked to rulesets through [`GOV_POLICY_RULESET`](../reference/gov.md#gov_policy_ruleset), and the 4 rulesets and 89 rules go into [`GOV_RULESET`](../reference/gov.md#gov_ruleset) and [`GOV_RULESET_RULE`](../reference/gov.md#gov_ruleset_rule). See [Governance check](14-governance.md).
+    - The built-in gateway registers itself in [`AM_GW_INSTANCES`](../reference/am.md#am_gw_instances) and [`AM_GW_INSTANCE_ENV_MAPPING`](../reference/am.md#am_gw_instance_env_mapping) (environment `Default`). It keeps updating its `LAST_UPDATED` heartbeat every 30 seconds.
+    - The tenant's configuration is stored as one [`AM_SYSTEM_CONFIGS`](../reference/am.md#am_system_configs) row (`carbon.super`, `TENANT`).
 
-    All of them are keyed by `(NAME, TENANT_ID)`.
+    !!! note "Not seeded"
+        [`AM_GATEWAY_ENVIRONMENT`](../reference/am.md#am_gateway_environment) stays empty. The `Default` environment comes from `deployment.toml`, not from the database. [`AM_SYSTEM_APPS`](../reference/am.md#am_system_apps) also stays empty until someone logs into a portal UI, which registers that portal's own OAuth client there.
 
-5. **First Dev Portal action → subscriber.** The first time a user creates an application, or even just opens the portal, APIM inserts a row into [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber). It is unique on `(TENANT_ID, USER_ID)`. APIM then creates the user's **DefaultApplication** straight away (see [Create an application](07-create-application.md)).
+5. **First Dev Portal action → subscriber.** The first time a user calls the Dev Portal (in the test, by creating an application), APIM inserts a row into [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber), unique on `(TENANT_ID, USER_ID)`. In the same moment it creates the user's **DefaultApplication** in [`AM_APPLICATION`](../reference/am.md#am_application). See [Create an application](07-create-application.md).
 
     | SUBSCRIBER_ID | USER_ID | TENANT_ID | EMAIL_ADDRESS |
     |---|---|---|---|
-    | 1 | admin | -1234 | admin@example.com |
+    | 1 | admin | -1234 | *(empty)* |
 
 !!! warning "Logical link (no foreign key)"
-    `AM_SUBSCRIBER.USER_ID` holds a **username**, not a foreign key. It matches `UM_USER.UM_USER_NAME` when you use the JDBC user store, but if users live in LDAP or Active Directory there's no user row in the database at all. `TENANT_ID` columns across APIM point at `UM_TENANT.UM_ID` by value only (`-1234` = super tenant).
+    `AM_SUBSCRIBER.USER_ID` holds a **username**, not a foreign key. It matches `UM_USER.UM_USER_NAME` when you use the JDBC user store, but if users live in LDAP or Active Directory there's no user row in the database at all. `TENANT_ID` columns across APIM hold the tenant ID by value only (`-1234` = super tenant, which has no `UM_TENANT` row).
 
 6. **Organizations (optional).** If you enable organizations, [`AM_ORGANIZATION_MAPPING`](../reference/am.md#am_organization_mapping) maps an APIM organization (`ORG_UUID`) to an external one (`EXT_ORG_ID`, `PARENT_ORG_UUID`). Most 4.x tables have an `ORGANIZATION` column. By default it holds the tenant domain (`carbon.super`).
 
@@ -74,17 +86,17 @@ This data is almost never deleted.
 
 ## Try it
 
-This query lists the internal apps and the Key Managers configured for the super tenant.
+This query lists the Key Managers, the default subscription tiers and the subscribers for the super tenant.
 
 ```sql
-SELECT NAME, CONSUMER_KEY, TENANT_DOMAIN FROM AM_SYSTEM_APPS;
-
 SELECT NAME, TYPE, ENABLED, ORGANIZATION FROM AM_KEY_MANAGER;
+
+SELECT NAME, QUOTA_TYPE, QUOTA, UNIT_TIME, TIME_UNIT FROM AM_POLICY_SUBSCRIPTION WHERE TENANT_ID = -1234;
 
 SELECT SUBSCRIBER_ID, USER_ID, TENANT_ID, DATE_SUBSCRIBED FROM AM_SUBSCRIBER;
 ```
 
 !!! note "Different in 3.x"
-    3.x bootstraps the same way. The main difference is that tables are scoped by `TENANT_ID` rather than an `ORGANIZATION` column. See [3.x: Setup & first user](../../apim-3/flows/01-bootstrap.md).
+    3.x bootstraps the same way. The main difference is that tables are scoped by `TENANT_ID` rather than an `ORGANIZATION` column, and there are no LLM providers, operation policies or governance rules. See [3.x: Setup & first user](../../apim-3/flows/01-bootstrap.md).
 
 **Related domains:** [Tenants & users](../domains/tenancy-users.md) · [Keys & tokens](../domains/keys-tokens.md) · [Throttling policies](../domains/throttling.md)

@@ -90,7 +90,7 @@ erDiagram
 
 ### AM_APPLICATION_REGISTRATION
 
-**One row =** a key-generation request that's waiting for approval.
+**One row =** a key-generation request for one app, key type and key manager. It's written for **every** request, not only ones waiting for approval: a live 3.2.0 server wrote it with no workflow configured.
 
 | Column | What it means |
 |---|---|
@@ -99,11 +99,11 @@ erDiagram
 | `APP_ID` | → `AM_APPLICATION` (FK, restricted). |
 | `TOKEN_TYPE` | Key type being requested, `PRODUCTION` or `SANDBOX`. |
 | `KEY_MANAGER` | Key manager **name**. |
-| `WF_REF` | Workflow reference (*logical* link to `AM_WORKFLOWS.WF_REFERENCE`). |
+| `WF_REF` | A UUID that links the request to its workflow when approval is on (*logical* link to `AM_WORKFLOWS`). It's filled even without a workflow. |
 | `INPUTS` | The requested OAuth settings: grant types, callback and so on. |
 | `TOKEN_SCOPE`, `VALIDITY_PERIOD`, `ALLOWED_DOMAINS` | Requested token settings. |
 
-**Connects to:** unique per (subscriber, app, token type, key manager). The row is removed once the request is approved and the keys are generated.
+**Connects to:** unique per (subscriber, app, token type, key manager). The row **stays** after the keys are generated. On a live server it was only removed when the application was deleted.
 
 [Full column list](../reference/am.md#am_application_registration)
 
@@ -142,7 +142,7 @@ erDiagram
 | `CONSUMER_KEY`, `CONSUMER_SECRET` | The client credentials. `CONSUMER_KEY` is unique (*logical* link to `IDN_OAUTH_CONSUMER_APPS`). |
 | `TENANT_DOMAIN`, `CREATED_TIME` | Tenant, and when it was created. |
 
-**Watch out:** these aren't developer applications and never appear in `AM_APPLICATION`.
+**Watch out:** these aren't developer applications and never appear in `AM_APPLICATION`. The rows are created when the web portals are first used, not at server startup. A live 3.2.0 server driven only through REST calls left this table empty.
 
 [Full column list](../reference/am.md#am_system_apps)
 
@@ -176,7 +176,7 @@ erDiagram
 | Column | What it means |
 |---|---|
 | `TOKEN_ID` | Primary key. |
-| `ACCESS_TOKEN`, `REFRESH_TOKEN` | The tokens, or their hashes if token hashing is enabled (see `ACCESS_TOKEN_HASH`). |
+| `ACCESS_TOKEN`, `REFRESH_TOKEN` | The tokens, or their hashes if token hashing is enabled (see `ACCESS_TOKEN_HASH`). For JWT apps, a live 3.2.0 server stored the JWT's ID (a UUID) here, not the full JWT. |
 | `CONSUMER_KEY_ID` | → `IDN_OAUTH_CONSUMER_APPS.ID` (FK, cascade). |
 | `AUTHZ_USER`, `USER_DOMAIN`, `TENANT_ID` | The user the token represents. For `client_credentials`, this is the app owner. |
 | `USER_TYPE` | `APPLICATION` or `APPLICATION_USER`. |
@@ -187,7 +187,7 @@ erDiagram
 
 **Connects to:** `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` (one to many, cascade) and `IDN_OAUTH2_TOKEN_BINDING` (one to one, cascade).
 
-**Watch out:** for JWT applications, the gateway validates the token's signature **without** reading this table.
+**Watch out:** for JWT applications, the gateway validates the token's signature **without** reading this table. Even so, every token is stored. Key generation already stores a first token, and each new token for the same app marks the previous row `REVOKED`. See [Get a token & call the API](../flows/10-token-and-invoke.md).
 
 [Full column list](../reference/idn.md#idn_oauth2_access_token)
 
@@ -209,7 +209,7 @@ erDiagram
 
 **Connects to:** no FKs, and it has no primary key. `TOKEN_ID` and `CONSUMER_KEY_ID` keep the original values (*logical*).
 
-**Watch out:** this table only fills up if token auditing (clean-up with retention) is enabled.
+**Watch out:** on a default 3.2.0 server, explicitly revoking a token (`/oauth2/revoke`) **moved** its row here straight away. The token clean-up job also moves old rows here. So this table isn't empty on a default install.
 
 [Full column list](../reference/idn.md#idn_oauth2_access_token_audit)
 

@@ -1,11 +1,14 @@
 # Gateway publishing
 
 !!! abstract "In one sentence"
-    When an API is published in 3.x, APIM stores the gateway configuration (the "artifact") in the database under each gateway label. Gateways then pull what's meant for them.
+    When the optional *gateway artifact synchronizer* is on, publishing an API in 3.x stores the gateway configuration (the "artifact") in the database under each gateway label, and gateways pull what's meant for them. It's **off by default**, and then these two tables stay empty.
 
 ## The idea
 
-A gateway needs a runtime configuration for each API: a Synapse XML file for the classic gateway, or a project for the microgateway. In 3.x, APIM **builds that artifact at publish time and saves it in the database**. It then notifies the gateways, which fetch the artifact for their **label** and deploy it.
+A gateway needs a runtime configuration for each API: a Synapse XML file for the classic gateway, or a project for the microgateway. In 3.x, APIM builds that artifact at publish time.
+
+- **By default**, the Publisher pushes the artifact straight to each selected gateway environment, and nothing is written to these tables. On a stock 3.2.0 server, publishing an API left both tables empty.
+- **With the synchronizer on** (`[apim.sync_runtime_artifacts.*]`), APIM **saves the artifact in the database**. It then notifies the gateways, which fetch the artifact for their **label** and deploy it.
 
 Two tables do this:
 
@@ -37,7 +40,7 @@ sequenceDiagram
     participant DB as WSO2AM_DB
     participant GW as Gateway
     Pub->>DB: upsert AM_GW_PUBLISHED_API_DETAILS
-    Pub->>DB: upsert AM_GW_API_ARTIFACTS (label, PUBLISH)
+    Pub->>DB: upsert AM_GW_API_ARTIFACTS (label, Publish)
     Pub-->>GW: notify "API published"
     GW->>DB: read artifact for my label
     GW->>GW: deploy API

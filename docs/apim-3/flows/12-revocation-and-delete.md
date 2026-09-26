@@ -3,7 +3,17 @@
 !!! abstract "What happens"
     Revoking a token marks it as unusable. For JWTs, which gateways check without the database, APIM also records the revoked token in `AM_REVOKED_JWT` and tells every gateway. Deleting an API, application or subscription removes rows in a set order. In 3.2 most child tables *block* the delete (`ON DELETE RESTRICT`), so APIM's code must remove the children first.
 
-**Who:** Dev Portal, Publisher, Admin Portal, Key Manager · **Tables written:** `IDN_OAUTH2_ACCESS_TOKEN`, `AM_REVOKED_JWT`, plus deletes across `AM_*` and `IDN_*` · **Tables read:** the same
+**Who:** Dev Portal, Publisher, Admin Portal, Key Manager · **Tables written:** `IDN_OAUTH2_ACCESS_TOKEN`, `IDN_OAUTH2_ACCESS_TOKEN_AUDIT`, `AM_REVOKED_JWT`, plus deletes across `AM_*`, `IDN_*`, `SP_*`, `UM_*` and `REG_*` · **Tables read:** the same
+
+!!! success "Verified on a running server"
+    Checked on WSO2 APIM 3.2.0 (H2, default config) by revoking a token and deleting a subscription, an application, an API product and an API version, diffing the database after each step.
+
+    - **Revoke:** the token row was **moved** out of `IDN_OAUTH2_ACCESS_TOKEN` into `IDN_OAUTH2_ACCESS_TOKEN_AUDIT`, its two `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` rows were deleted, and one `AM_REVOKED_JWT` row was added.
+    - **Delete subscription:** just the `AM_SUBSCRIPTION` row.
+    - **Delete application:** `AM_APPLICATION`, `AM_APPLICATION_KEY_MAPPING`, `AM_APPLICATION_REGISTRATION`, the app's remaining token and scopes, `IDN_OAUTH_CONSUMER_APPS`, 10 `IDN_OIDC_PROPERTY` rows, `SP_APP`, `SP_INBOUND_AUTH`, `SP_METADATA`, and the app's `UM_HYBRID_ROLE` + `UM_HYBRID_USER_ROLE`.
+    - **Delete product:** its `AM_API` row, its `AM_API_PRODUCT_MAPPING` row and its registry data.
+    - **Delete API 2.0.0:** `AM_API`, `AM_API_DEFAULT_VERSION`, `AM_API_LC_EVENT`, `AM_API_URL_MAPPING` (2), `AM_API_RESOURCE_SCOPE_MAPPING`, the registry artifact and permissions. The shared scope row stayed, because 1.0.0 still used it.
+    - **Delete API 1.0.0 with a live subscription:** refused by APIM with **HTTP 409** ("Cannot remove the API … as active subscriptions exist"), and nothing changed.
 
 ## The flow at a glance
 
@@ -16,8 +26,8 @@ sequenceDiagram
     participant DB as Database
     participant GW as Gateways
     App->>KM: POST /revoke (token)
-    KM->>DB: set TOKEN_STATE = REVOKED
-    KM->>DB: insert AM_REVOKED_JWT (signature, expiry)
+    KM->>DB: move token row to IDN_OAUTH2_ACCESS_TOKEN_AUDIT
+    KM->>DB: insert AM_REVOKED_JWT (token id, expiry)
     KM-->>GW: event: token revoked
     GW->>GW: add to in-memory revoked list
 ```
@@ -26,15 +36,17 @@ sequenceDiagram
 
 ## Part 1: Revoking tokens
 
-1. **Token state** → [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token). `TOKEN_STATE` changes from `ACTIVE` to `REVOKED`, and `TOKEN_STATE_ID` gets a unique value so the row doesn't clash with a new active token. Regenerating an app's token, or changing a user's password, has the same effect on the old tokens.
+1. **Token row** → [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token) and [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](../reference/idn.md#idn_oauth2_access_token_audit). There are two different cases:
+    - **Explicit revoke** (`POST /oauth2/revoke`): the row is **deleted** from `IDN_OAUTH2_ACCESS_TOKEN` and a copy is inserted into `IDN_OAUTH2_ACCESS_TOKEN_AUDIT`. Its scope rows in `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` are deleted.
+    - **Superseded** (the app gets a new token): the old row stays in place with `TOKEN_STATE = 'REVOKED'` and a unique `TOKEN_STATE_ID`, so it doesn't clash with the new active token. Changing a user's password has the same effect.
 
 2. **Revoked JWT list** → [`AM_REVOKED_JWT`](../reference/am.md#am_revoked_jwt).
 
     | `UUID` | `SIGNATURE` | `EXPIRY_TIMESTAMP` | `TENANT_ID` | `TOKEN_TYPE` | `TIME_CREATED` |
     |---|---|---|---|---|---|
-    | `5a0c…` | `eyJ…sig` | 1599000000000 | -1234 | `JWT` | 2020-09-01 11:00 |
+    | `51d3…` | `3427…` | 1790403942044 | -1234 | `JWT` | 2026-09-26 10:57 |
 
-    - The gateway identifies a revoked JWT by its **signature** part.
+    - That's the real row from the test run. The `SIGNATURE` column held the same short value as the token's `ACCESS_TOKEN` column (the JWT ID), not a long signature string.
     - `EXPIRY_TIMESTAMP` tells the gateway when it can forget the entry, because an expired token is rejected anyway.
     - `TOKEN_TYPE` distinguishes OAuth JWTs from **API keys**. Revoking an API key only ever writes here, because API keys aren't stored anywhere else.
 
@@ -42,7 +54,7 @@ sequenceDiagram
 
 ### Delete a subscription
 
-1. Delete the [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) row. Its only child, the legacy [`AM_SUBSCRIPTION_KEY_MAPPING`](../reference/am.md#am_subscription_key_mapping), has `RESTRICT`, so any rows there must go first.
+1. Delete the [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) row. On the test server, that was the only change. Its only child, the legacy [`AM_SUBSCRIPTION_KEY_MAPPING`](../reference/am.md#am_subscription_key_mapping), has `RESTRICT`, so any rows there would have to go first. It was empty.
 2. With the *Subscription Deletion* workflow on, the row is first set to `SUBS_CREATE_STATE = 'UN_SUBSCRIBE'` and waits for approval.
 
 ### Delete an application
@@ -57,7 +69,7 @@ flowchart LR
     D --> E[Attributes and groups cascade]
 ```
 
-- Deleting the OAuth client ([`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps)) cascades to its tokens, authorization codes and scopes in the `IDN_*` tables. The matching `SP_APP` service provider is removed by the Key Manager too.
+- Deleting the OAuth client ([`IDN_OAUTH_CONSUMER_APPS`](../reference/idn.md#idn_oauth_consumer_apps)) cascades to its tokens, authorization codes and scopes in the `IDN_*` tables, and removes its `IDN_OIDC_PROPERTY` rows. The Key Manager also removes the matching `SP_APP` service provider (with `SP_INBOUND_AUTH` and `SP_METADATA`) and the `Application/<owner>_<app>_<keytype>` hybrid role.
 - [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), [`AM_APPLICATION_REGISTRATION`](../reference/am.md#am_application_registration) and [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) all use `RESTRICT` on `AM_APPLICATION`, so they're deleted by code first.
 - [`AM_APPLICATION_ATTRIBUTES`](../reference/am.md#am_application_attributes) and [`AM_APPLICATION_GROUP_MAPPING`](../reference/am.md#am_application_group_mapping) cascade automatically.
 - Any pending [`AM_WORKFLOWS`](../reference/am.md#am_workflows) rows for the app are cleaned up by code, because `WF_REFERENCE` is a logical link.
@@ -66,7 +78,7 @@ flowchart LR
 
 | Child table | Link to `AM_API` | What happens |
 |---|---|---|
-| `AM_SUBSCRIPTION` | FK, `RESTRICT` | Code deletes first (an API with subscriptions can't be deleted from the Publisher) |
+| `AM_SUBSCRIPTION` | FK, `RESTRICT` | APIM **refuses** the delete with HTTP 409 while active subscriptions exist. Remove them first |
 | `AM_API_LC_EVENT` | FK, `RESTRICT` | Code deletes first |
 | `AM_API_COMMENTS`, `AM_API_RATINGS` | FK, `RESTRICT` | Code deletes first |
 | `AM_EXTERNAL_STORES`, `AM_SECURITY_AUDIT_UUID_MAPPING` | FK, `RESTRICT` | Code deletes first |
@@ -76,7 +88,7 @@ flowchart LR
 | `AM_GW_API_ARTIFACTS` → `AM_GW_PUBLISHED_API_DETAILS` | logical (API UUID) | Code removes the artifacts, then the details |
 | Registry artifact (`REG_*`) | logical | Code deletes the artifact, docs and definition |
 
-Local scopes of the API (`AM_SCOPE` / `IDN_OAUTH2_SCOPE`) are deleted by code. Shared scopes (`AM_SHARED_SCOPE`) survive.
+Local scopes of the API live in `IDN_OAUTH2_SCOPE` in 3.2 (not `AM_SCOPE`), and code deletes them when no other version uses them. In the test run, deleting 2.0.0 kept `order:write` because 1.0.0 still used it. Shared scopes (`AM_SHARED_SCOPE`) survive.
 
 ## Try it
 

@@ -50,7 +50,7 @@ flowchart LR
 | `API_PROVIDER` | The owner's user name, e.g. `admin`, or `bob@acme.com` for a tenant user. |
 | `API_NAME`, `API_VERSION` | Name and version. Together with the provider, unique. |
 | `CONTEXT` | The URL base including version, e.g. `/pizzashack/1.0.0`. |
-| `CONTEXT_TEMPLATE` | The context with a `{version}` placeholder, e.g. `/pizzashack/{version}`. |
+| `CONTEXT_TEMPLATE` | The context as entered, before the version is added. A live 3.2.0 server stored `/pizzashack` for context `/pizzashack/1.0.0`. It only contains a `{version}` placeholder if the creator put one in the context. |
 | `API_TIER` | Optional API-level throttling policy **name** (*logical* link to [`AM_API_THROTTLE_POLICY`](throttling.md#am_api_throttle_policy)). |
 | `API_TYPE` | `HTTP`, `WS`, `SOAPTOREST`, `GRAPHQL`, `WEBSUB`, `SSE` or `APIProduct`, among others. |
 | `CREATED_BY`, `CREATED_TIME`, `UPDATED_*` | Audit columns. |
@@ -78,7 +78,7 @@ flowchart LR
 | `API_ID` | Owning API (*logical* link to `AM_API.API_ID`, **no FK**). |
 | `HTTP_METHOD` | `GET`, `POST` and so on. For GraphQL: `QUERY`/`MUTATION`/`SUBSCRIPTION`. |
 | `URL_PATTERN` | e.g. `/menu` or `/order/{orderId}`. |
-| `AUTH_SCHEME` | `Any` (secured) or `None` (open resource). |
+| `AUTH_SCHEME` | `Any` (secured) or `None` (open resource). A live 3.2.0 server also stored the literal `Application & Application User` after an API update. |
 | `THROTTLING_TIER` | Resource-level policy **name** (*logical* link to [`AM_API_THROTTLE_POLICY`](throttling.md#am_api_throttle_policy)). |
 | `MEDIATION_SCRIPT` | Optional script, used for prototyped (mock) implementations. |
 
@@ -87,7 +87,7 @@ flowchart LR
 - [`AM_API_RESOURCE_SCOPE_MAPPING`](scopes.md#am_api_resource_scope_mapping): one to many, FK, cascade.
 - [`AM_API_PRODUCT_MAPPING`](api-products.md#am_api_product_mapping): one to many, FK, cascade.
 
-**Watch out:** when an API is updated, APIM deletes and re-inserts its URL mappings, so `URL_MAPPING_ID` values change.
+**Watch out:** when an API is updated, APIM deletes and re-inserts its URL mappings, so `URL_MAPPING_ID` values change. This was confirmed on a live 3.2.0 server, where IDs 1–2 became 5–6 and the scope and product mappings were re-pointed.
 
 [Full column list](../reference/am.md#am_api_url_mapping)
 

@@ -43,8 +43,8 @@ flowchart LR
 
 | Column | What it means |
 |---|---|
-| `UUID` | The token's unique ID (the JWT `jti`). Primary key. |
-| `SIGNATURE` | The token's signature, used as an extra check. |
+| `UUID` | Primary key: a new random UUID for the revocation entry. |
+| `SIGNATURE` | Despite the name, it held the token's identifier (`jti`) on a 4.7.0 test server, the same value as `IDN_INVALID_TOKENS.TOKEN_IDENTIFIER` (verified). |
 | `EXPIRY_TIMESTAMP` | When the token would have expired. After that, the row can be deleted. |
 | `TENANT_ID` | Tenant. |
 | `TOKEN_TYPE` | E.g. an OAuth access token or an API key. |
@@ -82,18 +82,22 @@ flowchart LR
 
 It has `UUID` (PK), `TOKEN_IDENTIFIER`, `CONSUMER_KEY` (a logical link to the client), `TIME_CREATED` and `EXPIRY_TIMESTAMP`.
 
+**Verified:** on a 4.7.0 server with default settings, JWTs aren't stored, and revoking one through `/oauth2/revoke` wrote **one row here plus one row in `AM_REVOKED_JWT`**, both carrying the same token identifier.
+
 [Full column list](../reference/idn.md#idn_invalid_tokens)
 
 ## Example
 
-The developer regenerates PizzaMobile's consumer secret:
+Real rows from a 4.7.0 test server: first a single JWT was revoked, then the application `PizzaApp` (consumer key `rfjt…`) was deleted.
 
 | Table | Row |
 |---|---|
-| `AM_APP_REVOKED_EVENT` | `CONSUMER_KEY = abc123`, `TIME_REVOKED = 2026-09-24 10:15`, `ORGANIZATION = carbon.super` |
-| `IDN_APP_REVOKED_EVENT` | `CONSUMER_KEY = abc123`, `TIME_REVOKED = 2026-09-24 10:15` |
+| `AM_REVOKED_JWT` | `UUID = c26f…`, `SIGNATURE = 2d4d…` *(jti)*, `TENANT_ID = -1234`, `TOKEN_TYPE = JWT` |
+| `IDN_INVALID_TOKENS` | `TOKEN_IDENTIFIER = 2d4d…`, `CONSUMER_KEY = rfjt…` |
+| `IDN_APP_REVOKED_EVENT` | `CONSUMER_KEY = rfjt…`, `TIME_REVOKED = 05:22:04`, `ORGANIZATION = carbon.super` *(written at delete)* |
+| `AM_APP_REVOKED_EVENT` | `CONSUMER_KEY = rfjt…`, `TIME_REVOKED = 05:22:04`, `ORGANIZATION = carbon.super` *(appeared seconds later, asynchronously)* |
 
-Any token for `abc123` issued before 10:15 is rejected, and new tokens issued after that work normally.
+Any token for `rfjt…` issued before that time is rejected. The revoked-event rows **stay** even though the application and its OAuth client are gone.
 
 ## Try it
 

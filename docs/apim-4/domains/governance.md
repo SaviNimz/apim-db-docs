@@ -102,7 +102,7 @@ erDiagram
 
 ### GOV_REQUEST
 
-**One row =** a queued "please check this artifact" request. It has `REQ_ID`, `ARTIFACT_KEY` (logical), `STATUS` (e.g. pending or processing), `REQ_TIMESTAMP` and `PROCESSING_TIMESTAMP`. (`STATUS`, `ARTIFACT_KEY`) is unique, so an artifact is queued at most once per status. [Full column list](../reference/gov.md#gov_request)
+**One row =** a queued "please check this artifact" request. It has `REQ_ID`, `ARTIFACT_KEY` (logical), `STATUS` (e.g. pending or processing), `REQ_TIMESTAMP` and `PROCESSING_TIMESTAMP`. (`STATUS`, `ARTIFACT_KEY`) is unique, so an artifact is queued at most once per status. On a 4.7.0 test server, requests were inserted as `PENDING` on API create and update, and **deleted** once the background engine had processed them (verified). [Full column list](../reference/gov.md#gov_request)
 
 ### GOV_REQUEST_POLICY
 
@@ -114,7 +114,7 @@ erDiagram
 
 ### GOV_RULESET_RUN
 
-**One row =** the latest result of running ruleset R on artifact A. It has `RESULT` (pass or fail) and `RUN_TIMESTAMP`. (`ARTIFACT_KEY`, `RULESET_ID`) is unique, so only the latest run is kept. [Full column list](../reference/gov.md#gov_ruleset_run)
+**One row =** the latest result of running ruleset R on artifact A. It has `RESULT` (pass or fail) and `RUN_TIMESTAMP`. (`ARTIFACT_KEY`, `RULESET_ID`) is unique, so only the latest run is kept. Each new run deletes the old row (and its violations) and inserts a new one with a new `RULESET_RUN_ID` (verified). `RESULT` was `0` for a failed run. [Full column list](../reference/gov.md#gov_ruleset_run)
 
 ### GOV_RULE_VIOLATION
 
@@ -124,12 +124,17 @@ erDiagram
 
 | Table | Row |
 |---|---|
-| `GOV_RULESET` | `RULESET_ID = rs1`, `NAME = OWASP Top 10` |
-| `GOV_POLICY` | `POLICY_ID = p1`, `NAME = Security baseline`, `IS_GLOBAL = 1` |
-| `GOV_POLICY_GOVERNABLE_STATE` / `GOV_POLICY_ACTION` | `p1` at `API_PUBLISH`, severity `ERROR` → `BLOCK` |
-| `GOV_ARTIFACT` | `ARTIFACT_KEY = a1`, `ARTIFACT_REF_ID = 5f1c…` (PizzaShackAPI) |
-| `GOV_RULESET_RUN` | `a1` × `rs1`, `RESULT = FAIL` |
-| `GOV_RULE_VIOLATION` | `RULE_NAME = owasp:api2:2019-no-http-basic`, `VIOLATED_PATH = components.securitySchemes.basic` |
+The seeded default policy and a real check of PizzaShackAPI on a 4.7.0 test server:
+
+| Table | Row |
+|---|---|
+| `GOV_RULESET` | 4 seeded: *WSO2 REST API Design Guidelines*, *WSO2 API Management Guidelines*, *WSO2 MCP Server Management Guidelines*, *OWASP Top 10* (89 rules in total) |
+| `GOV_POLICY` | `POLICY_ID = 8675…`, `NAME = WSO2 API Management Best Practices`, `IS_GLOBAL = 1` |
+| `GOV_POLICY_RULESET` | the policy → 3 rulesets (OWASP isn't linked by default) |
+| `GOV_POLICY_GOVERNABLE_STATE` / `GOV_POLICY_ACTION` | `API_CREATE` and `API_UPDATE`, severity `ERROR` / `WARN` / `INFO` → all `NOTIFY` (nothing blocks by default) |
+| `GOV_ARTIFACT` | `ARTIFACT_KEY = 7c05…`, `ARTIFACT_REF_ID = b41b…` (PizzaShackAPI), `ARTIFACT_TYPE = API` |
+| `GOV_RULESET_RUN` | one row per linked ruleset, `RESULT = 0` |
+| `GOV_RULE_VIOLATION` | `RULE_NAME = api-technical-owner-email`, `VIOLATED_PATH = [data][businessInformation][technicalOwnerEmail]` (one of 16) |
 
 ## Try it
 

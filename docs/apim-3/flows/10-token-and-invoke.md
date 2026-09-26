@@ -3,7 +3,17 @@
 !!! abstract "What happens"
     The client app uses its consumer key and secret to get an **access token** from the Key Manager. Then it calls the API through the Gateway with that token. The Gateway checks the token, the subscription, the scopes and the rate limits, and forwards the request to the backend.
 
-**Who:** Client app → Key Manager → Gateway · **Tables written:** `IDN_OAUTH2_ACCESS_TOKEN`, `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` · **Tables read:** `IDN_OAUTH_CONSUMER_APPS`, `AM_APPLICATION_KEY_MAPPING`, `AM_SUBSCRIPTION`, `AM_API_URL_MAPPING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_POLICY_*`, `AM_REVOKED_JWT`
+**Who:** Client app → Key Manager → Gateway · **Tables written:** `IDN_OAUTH2_ACCESS_TOKEN`, `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` (token request only, since calling the API writes nothing) · **Tables read:** `IDN_OAUTH_CONSUMER_APPS`, `AM_APPLICATION_KEY_MAPPING`, `AM_SUBSCRIPTION`, `AM_API_URL_MAPPING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_POLICY_*`, `AM_REVOKED_JWT`
+
+!!! success "Verified on a running server"
+    Checked on WSO2 APIM 3.2.0 (H2, default config) by getting a `client_credentials` token for `PizzaApp`, calling `GET /pizzashack/1.0.0/menu` through the gateway, generating an API key, and diffing the database after each step.
+
+    - **The token was persisted.** A new `IDN_OAUTH2_ACCESS_TOKEN` row was written with two `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` rows (`am_application_scope`, `default`).
+    - **Surprise:** the app's previous token, the one issued during key generation, was **updated to `TOKEN_STATE = 'REVOKED'`** when the new one was issued.
+    - `ACCESS_TOKEN` held a short UUID-like value (the JWT's ID), not the full JWT.
+    - **Calling the API wrote nothing** to either database, whether the call returned 404 or 200.
+    - **Generating an API key wrote nothing.** It's a self-contained JWT.
+    - The first calls returned **404** because the API had no gateway environment selected. See [Publish to the gateway](04-publish-to-gateway.md).
 
 ## The flow at a glance
 
@@ -32,14 +42,17 @@ sequenceDiagram
 
 2. **Token stored** → [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token). Even JWT tokens get a row in 3.x.
 
-    | `TOKEN_ID` | `CONSUMER_KEY_ID` | `AUTHZ_USER` | `GRANT_TYPE` | `TOKEN_STATE` | `VALIDITY_PERIOD` | `TIME_CREATED` |
-    |---|---|---|---|---|---|---|
-    | `0d7e…` | 5 | `admin` | `client_credentials` | `ACTIVE` | 3600000 | 2020-09-01 10:30 |
+    | `TOKEN_ID` | `ACCESS_TOKEN` | `CONSUMER_KEY_ID` | `AUTHZ_USER` | `USER_TYPE` | `GRANT_TYPE` | `TOKEN_STATE` | `VALIDITY_PERIOD` |
+    |---|---|---|---|---|---|---|---|
+    | `c23c…` | `9cd6…` | 2 | `admin` | `APPLICATION` | `client_credentials` | `REVOKED` | 3600000 |
+    | `e2fc…` | `3427…` | 2 | `admin` | `APPLICATION` | `client_credentials` | `ACTIVE` | 3600000 |
+
+    These are the real rows after the second token request. The first row was issued during key generation. When the second token was issued, the first one became `REVOKED`, and `TOKEN_STATE_ID` was set to a new UUID. For JWT apps, 3.2 issues a fresh token on each request rather than reusing the active one.
 
     - `CONSUMER_KEY_ID` is a real FK to `IDN_OAUTH_CONSUMER_APPS.ID` (the integer ID, not the key string), with `ON DELETE CASCADE`.
-    - `ACCESS_TOKEN` / `ACCESS_TOKEN_HASH` identify the token. For JWTs, a shorter identifier (the JWT ID) or a hash is stored rather than the full token, depending on configuration.
+    - `ACCESS_TOKEN` / `ACCESS_TOKEN_HASH` identify the token. For JWTs, `ACCESS_TOKEN` holds the JWT ID (a UUID), not the full token, and `ACCESS_TOKEN_HASH` holds a SHA-256 hash.
     - `TOKEN_STATE` is `ACTIVE`, `REVOKED`, `EXPIRED` or `INACTIVE`. The table has no FK back to APIM, so reaching the application goes through the consumer key.
-    - Old or revoked rows may be moved to [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](../reference/idn.md#idn_oauth2_access_token_audit) by the token cleanup job.
+    - Revoking a token through `/oauth2/revoke` **moves** its row to [`IDN_OAUTH2_ACCESS_TOKEN_AUDIT`](../reference/idn.md#idn_oauth2_access_token_audit) right away. See [Revoke & delete](12-revocation-and-delete.md). The token cleanup job does the same for old rows.
 
 3. **Token scopes** → [`IDN_OAUTH2_ACCESS_TOKEN_SCOPE`](../reference/idn.md#idn_oauth2_access_token_scope). One row per granted scope (`TOKEN_ID`, `TOKEN_SCOPE`, `TENANT_ID`), for example `order:write`. It has a FK to the token with `ON DELETE CASCADE`. A scope is only granted if the user holds a role bound to it. See [Scopes](../domains/scopes.md).
 
@@ -62,11 +75,11 @@ sequenceDiagram
     | Token has the right scope | [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping) vs `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` |
     | Rate limits | subscription tier (`AM_SUBSCRIPTION.TIER_ID`), app tier (`AM_APPLICATION.APPLICATION_TIER`), resource tier (`AM_API_URL_MAPPING.THROTTLING_TIER`) and global policies, all evaluated by the Traffic Manager |
 
-5. **API keys (alternative to OAuth).** In 3.x, an *API key* is a self-contained signed JWT generated in the Developer Portal. It's **not stored** in the database. Only a revoked key leaves a trace, in `AM_REVOKED_JWT`.
+5. **API keys (alternative to OAuth).** In 3.x, an *API key* is a self-contained signed JWT generated in the Developer Portal. It's **not stored** in the database: generating one on the test server changed nothing. Only a revoked key leaves a trace, in `AM_REVOKED_JWT`.
 
 ## What gets cleaned up
 
-Expired tokens stay in `IDN_OAUTH2_ACCESS_TOKEN` until the token cleanup task removes them or moves them to the audit table. Deleting the OAuth client cascades to all its tokens and token scopes. See [Revoke & delete](12-revocation-and-delete.md).
+Expired and superseded (`REVOKED`) tokens stay in `IDN_OAUTH2_ACCESS_TOKEN` until the token cleanup task removes them or moves them to the audit table. Deleting the OAuth client cascades to all its tokens and token scopes. See [Revoke & delete](12-revocation-and-delete.md).
 
 ## Try it
 
@@ -85,4 +98,4 @@ ORDER  BY t.TIME_CREATED DESC;
 Related domains: [Keys & tokens](../domains/keys-tokens.md) · [Scopes](../domains/scopes.md) · [Throttling policies](../domains/throttling.md)
 
 !!! note "Different in 4.x"
-    In 4.x, JWT tokens are largely **not persisted** by default. Revocation is tracked with events and `IDN_INVALID_TOKENS`, and API keys can be stored in the new `AM_API_KEY*` tables. See [Get a token & call the API (4.x)](../../apim-4/flows/10-token-and-invoke.md).
+    In 4.x, application JWT tokens are **not persisted**: a verified 4.7.0 run stored no token row for them. Revocation is tracked with events and `IDN_INVALID_TOKENS`, and API keys can be stored in the new `AM_API_KEY*` tables. See [Get a token & call the API (4.x)](../../apim-4/flows/10-token-and-invoke.md).

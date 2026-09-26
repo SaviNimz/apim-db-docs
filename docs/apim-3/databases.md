@@ -23,12 +23,12 @@ flowchart LR
     KM[Key Manager] --> AM
     P --> SH[(WSO2SHARED_DB)]
     KM --> SH
-    GW[Gateway] -. pulls artifacts .-> AM
+    GW[Gateway] -. pulls artifacts if sync is on .-> AM
     N[Every node] --> LOC[(WSO2CARBON_DB)]
 ```
 
 - The Publisher, Dev Portal and Key Manager all read and write both main databases.
-- The gateway only pulls published API artifacts from `WSO2AM_DB` (see [Gateway publishing](domains/gateway-publishing.md)).
+- The gateway pulls published API artifacts from `WSO2AM_DB` only when the gateway artifact synchronizer is on. By default the Publisher pushes artifacts to the gateways instead, and a live 3.2.0 server wrote no artifact rows (see [Gateway publishing](domains/gateway-publishing.md)).
 - Every node keeps its own local registry.
 
 !!! tip "Using another database vendor"
