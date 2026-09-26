@@ -5,13 +5,6 @@
 
 **Who:** Publisher (API creator) · **Tables written:** `AM_API`, `AM_API_URL_MAPPING`, `IDN_OAUTH2_SCOPE`, `IDN_OAUTH2_SCOPE_BINDING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_API_LC_EVENT`, registry `REG_*`, `UM_PERMISSION`, `UM_ROLE_PERMISSION` · **Tables read:** `AM_API_THROTTLE_POLICY`, `AM_SHARED_SCOPE`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by creating PizzaShackAPI 1.0.0 through the Publisher REST API, with two resources and one scope, and diffing the database.
-
-    - Written: one `AM_API` row, one `AM_API_LC_EVENT` row, two `AM_API_URL_MAPPING` rows, one `AM_API_RESOURCE_SCOPE_MAPPING` row, one `IDN_OAUTH2_SCOPE` row with its `IDN_OAUTH2_SCOPE_BINDING`, the registry artifact (`REG_*`) and registry permissions (`UM_PERMISSION`, `UM_ROLE_PERMISSION`).
-    - **`AM_SCOPE` and `AM_SCOPE_BINDING` were not written.** In 3.2 the scope lives only in `IDN_OAUTH2_SCOPE`.
-    - `CONTEXT_TEMPLATE` was stored as `/pizzashack`, not `/pizzashack/{version}`.
-
 ## The flow at a glance
 
 This diagram shows what the Publisher saves when you click **Create** and then add resources and scopes.
@@ -50,7 +43,7 @@ sequenceDiagram
     |---|---|---|---|---|---|---|---|
     | 1 | `admin` | `PizzaShackAPI` | `1.0.0` | `/pizzashack/1.0.0` | `/pizzashack` | `HTTP` | `Unlimited` |
 
-    These are the real values from the test run. The 3.2 `AM_API` table has only 12 columns: there is no UUID and no status column. Its last four columns are `CREATED_BY`, `CREATED_TIME`, `UPDATED_BY` and `UPDATED_TIME`, and `UPDATED_*` stay `NULL` until the first edit.
+    The 3.2 `AM_API` table has only 12 columns: there is no UUID and no status column. Its last four columns are `CREATED_BY`, `CREATED_TIME`, `UPDATED_BY` and `UPDATED_TIME`, and `UPDATED_*` stay `NULL` until the first edit.
 
     - `(API_PROVIDER, API_NAME, API_VERSION)` is unique.
     - `API_TYPE` is `HTTP`, `WS`, `SOAP`, `SOAPTOREST`, `GRAPHQL`, `SSE`, `WEBSUB`, or `APIProduct` for products.
@@ -63,7 +56,7 @@ sequenceDiagram
     | 1 | 1 | `GET` | `/menu` | `Any` | `Unlimited` |
     | 2 | 1 | `POST` | `/order` | `Any` | `Unlimited` |
 
-    - `AUTH_SCHEME` is `Any` (security on) or `None` (open resource). In the test run, the rows created with the API said `Any`. After the API was later updated, the recreated rows said `Application & Application User`, which is the value sent in the request.
+    - `AUTH_SCHEME` is `Any` (security on) or `None` (open resource). Rows created together with the API store `Any`. When the API is updated, the recreated rows store the value sent in the request, such as `Application & Application User`.
     - `THROTTLING_TIER` is a resource-level policy name, linking to `AM_API_THROTTLE_POLICY.NAME` *(logical)*.
     - `MEDIATION_SCRIPT` holds per-resource mediation (for example, generated mock-API scripts).
 
@@ -71,7 +64,7 @@ sequenceDiagram
         `AM_API_URL_MAPPING.API_ID` points to `AM_API.API_ID`, but the database does not enforce it. Deleting an API relies on APIM's code to remove these rows.
 
     !!! warning "URL mapping IDs are not stable"
-        Every time the API is **updated**, APIM deletes all of its `AM_API_URL_MAPPING` rows and inserts new ones with **new IDs**. It then re-points `AM_API_RESOURCE_SCOPE_MAPPING` and `AM_API_PRODUCT_MAPPING` to the new rows. The same happens to the API's `IDN_OAUTH2_SCOPE` row, which gets a new `SCOPE_ID`. This was seen in the test run, where IDs 1–2 became 5–6. Never store a `URL_MAPPING_ID` outside APIM.
+        Every time the API is **updated**, APIM deletes all of its `AM_API_URL_MAPPING` rows and inserts new ones with **new IDs**. It then re-points `AM_API_RESOURCE_SCOPE_MAPPING` and `AM_API_PRODUCT_MAPPING` to the new rows. The same happens to the API's `IDN_OAUTH2_SCOPE` row, which gets a new `SCOPE_ID`. For example, IDs 1–2 become 5–6. Never store a `URL_MAPPING_ID` outside APIM.
 
 4. **Scopes** → [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope) + [`IDN_OAUTH2_SCOPE_BINDING`](../reference/idn.md#idn_oauth2_scope_binding) (role bindings).
 

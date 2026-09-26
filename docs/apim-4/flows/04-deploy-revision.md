@@ -7,14 +7,6 @@
     2. records which environment the revision should run on,
     3. records each gateway's confirmation once it has deployed the artifact.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by creating revision 1 of `PizzaShackAPI 1.0.0` and deploying it to the built-in `Default` environment. Surprises:
-
-    - **The gateway artifact is built when the revision is *created*, not when it's deployed.** [`AM_GW_PUBLISHED_API_DETAILS`](../reference/am.md#am_gw_published_api_details) and [`AM_GW_API_ARTIFACTS`](../reference/am.md#am_gw_api_artifacts) were written by the *Create revision* call.
-    - **[`AM_DEPLOYED_REVISION`](../reference/am.md#am_deployed_revision) was never written.** The gateway's confirmation was recorded in [`AM_GW_REVISION_DEPLOYMENT`](../reference/am.md#am_gw_revision_deployment) (`STATUS = 'SUCCESS'`, `ACTION = 'DEPLOY'`).
-    - **`VHOST` was stored as `NULL`** in [`AM_DEPLOYMENT_REVISION_MAPPING`](../reference/am.md#am_deployment_revision_mapping), even though the request asked for `localhost`.
-    - **The `Default` environment isn't in the database.** [`AM_GATEWAY_ENVIRONMENT`](../reference/am.md#am_gateway_environment) and [`AM_GW_VHOST`](../reference/am.md#am_gw_vhost) stayed empty, because the environment comes from `deployment.toml`.
-
 **Who:** API creator (Publisher), then each Gateway · **Tables written:** [`AM_REVISION`](../reference/am.md#am_revision), [`AM_API_REVISION_METADATA`](../reference/am.md#am_api_revision_metadata), revision copies in `AM_API_URL_MAPPING` / `AM_API_RESOURCE_SCOPE_MAPPING` / …, [`AM_GW_PUBLISHED_API_DETAILS`](../reference/am.md#am_gw_published_api_details), [`AM_GW_API_ARTIFACTS`](../reference/am.md#am_gw_api_artifacts), [`AM_DEPLOYMENT_REVISION_MAPPING`](../reference/am.md#am_deployment_revision_mapping), [`AM_GW_API_DEPLOYMENTS`](../reference/am.md#am_gw_api_deployments), [`AM_GW_REVISION_DEPLOYMENT`](../reference/am.md#am_gw_revision_deployment) · **Tables read:** [`AM_GATEWAY_ENVIRONMENT`](../reference/am.md#am_gateway_environment), [`AM_GW_VHOST`](../reference/am.md#am_gw_vhost), [`AM_GW_INSTANCES`](../reference/am.md#am_gw_instances)
 
 ## The flow at a glance
@@ -38,20 +30,20 @@ sequenceDiagram
 ```
 
 - The gateway pulls the artifact through an internal REST API on the control plane rather than reading the database directly.
-- `AM_DEPLOYMENT_REVISION_MAPPING` means "we *asked* for this". `AM_GW_REVISION_DEPLOYMENT` means "this gateway *confirmed* it".
+- `AM_DEPLOYMENT_REVISION_MAPPING` means "deployment was *requested*". `AM_GW_REVISION_DEPLOYMENT` means "this gateway *confirmed* it".
 
 ## Step by step
 
 1. **Create the revision.** A new row goes into [`AM_REVISION`](../reference/am.md#am_revision).
     - `ID` is the revision number (1, 2, 3 …) *per API*, so the primary key is `(ID, API_UUID)`.
     - `REVISION_UUID` is the global identifier that every copied row points to.
-    - `AM_API.REVISIONS_CREATED` goes up by one (0 → 1 in the test). An API can keep only a limited number of revisions (5 by default).
+    - `AM_API.REVISIONS_CREATED` goes up by one (for example, 0 → 1). An API can keep only a limited number of revisions (5 by default).
 
     | ID | API_UUID | REVISION_UUID | DESCRIPTION | CREATED_BY |
     |---|---|---|---|---|
     | 1 | `b41b…` | `4b45…` | first revision | *(null)* |
 
-2. **Snapshot the child rows.** The working copy's rows are **copied** with the new `REVISION_UUID` filled in. In the test that was the two URL mappings and the scope mapping. Operation-policy mappings, client certificates and GraphQL complexity are copied the same way when they exist.
+2. **Snapshot the child rows.** The working copy's rows are **copied** with the new `REVISION_UUID` filled in. For a simple API that's its URL mappings and scope mappings. Operation-policy mappings, client certificates and GraphQL complexity are copied the same way when they exist.
     - [`AM_API_REVISION_METADATA`](../reference/am.md#am_api_revision_metadata) stores the API-level tier at snapshot time (`API_UUID`, `REVISION_UUID`, `API_TIER = 'Unlimited'`).
     - The registry artifact is also copied, into a revision path.
 
@@ -75,10 +67,10 @@ sequenceDiagram
 4. **Choose where to deploy.** Gateway environments created in the Admin Portal live in [`AM_GATEWAY_ENVIRONMENT`](../reference/am.md#am_gateway_environment) (`UUID`, `NAME`, `GATEWAY_TYPE`, `ORGANIZATION`). Their hostnames live in [`AM_GW_VHOST`](../reference/am.md#am_gw_vhost), where `GATEWAY_ENV_ID` is an FK to `AM_GATEWAY_ENVIRONMENT.ID`.
 
     !!! info "Environments from the config file"
-        The environments defined in `deployment.toml`, such as the built-in **Default** environment, are **not** stored in `AM_GATEWAY_ENVIRONMENT`. In the test both tables stayed empty.
+        The environments defined in `deployment.toml`, such as the built-in **Default** environment, are **not** stored in `AM_GATEWAY_ENVIRONMENT`. For those environments, both tables stay empty.
 
 5. **Request the deployment.** One row per environment goes into [`AM_DEPLOYMENT_REVISION_MAPPING`](../reference/am.md#am_deployment_revision_mapping).
-    - `NAME` is the environment name and `VHOST` is the chosen host. For the config-file `Default` environment it was stored as `NULL`.
+    - `NAME` is the environment name and `VHOST` is the chosen host. For the config-file `Default` environment it's stored as `NULL`.
     - `REVISION_STATUS` is `APPROVED`, or `CREATED` while a [revision-deployment workflow](13-approval-workflows.md) is pending.
     - `DISPLAY_ON_DEVPORTAL` controls whether the Dev Portal shows this gateway URL.
 
@@ -99,14 +91,14 @@ sequenceDiagram
     | 1 | `b41b…` | carbon.super | SUCCESS | DEPLOY | `4b45…` |
 
     !!! warning "`AM_DEPLOYED_REVISION` stays empty"
-        The schema also has [`AM_DEPLOYED_REVISION`](../reference/am.md#am_deployed_revision) (`NAME`, `VHOST`, `REVISION_UUID`, `DEPLOYED_TIME`), which older docs describe as the "confirmed" table. In 4.7.0 with the built-in gateway, it was **not written** during deployment. Use `AM_GW_REVISION_DEPLOYMENT` to see what gateways actually confirmed.
+        The schema also has [`AM_DEPLOYED_REVISION`](../reference/am.md#am_deployed_revision) (`NAME`, `VHOST`, `REVISION_UUID`, `DEPLOYED_TIME`). In 4.7.0, deployments to the built-in gateway don't write to it. To see which gateways have acknowledged a deployment, use `AM_GW_REVISION_DEPLOYMENT`.
 
 !!! info "Federated and third-party gateways"
     For external gateways such as AWS, Azure or Kong:
     - [`AM_API_EXTERNAL_API_MAPPING`](../reference/am.md#am_api_external_api_mapping) links the APIM API to its ID on the external gateway.
     - [`AM_GATEWAY_TOKEN`](../reference/am.md#am_gateway_token) and the `AM_GW_PLATFORM_*` tables support gateways that register themselves.
 
-    See [Revisions & deployment](../domains/revisions-deployment.md). These weren't exercised in the test.
+    See [Revisions & deployment](../domains/revisions-deployment.md).
 
 ## What gets cleaned up
 

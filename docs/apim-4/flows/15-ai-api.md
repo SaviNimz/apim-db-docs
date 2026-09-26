@@ -3,16 +3,6 @@
 !!! abstract "What happens"
     An API creator exposes an AI service, such as OpenAI, Azure OpenAI or Mistral, through APIM. They pick an **LLM provider**, which an admin has registered with its API definition and models. APIM creates a normal API (`AM_API` plus resources) and links it to the provider through `AM_API_AI_CONFIGURATION`. Subscription tiers can then limit **tokens**, not just requests.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by creating `ChatAPI 1.0.0` on the built-in **OpenAI 2.0.0** provider (`subtypeConfiguration.subtype = 'AIAPI'`).
-    - The call wrote [`AM_API`](../reference/am.md#am_api) with `API_SUBTYPE = 'AIAPI'`, one [`AM_API_AI_CONFIGURATION`](../reference/am.md#am_api_ai_configuration) row, one [`AM_API_PRIMARY_EP_MAPPING`](../reference/am.md#am_api_primary_ep_mapping) row, an [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) row, a lifecycle event, the registry artifact, and a governance request.
-    - The 9 built-in providers and their 26 models were already there from startup.
-
-    Surprises:
-
-    - **No [`AM_API_ENDPOINTS`](../reference/am.md#am_api_endpoints) row was written.** The primary-endpoint mapping points at the name `default_production_endpoint`, and the endpoint itself stayed in the registry artifact.
-    - **The working copy's `API_REVISION_UUID` is `NULL`** in `AM_API_AI_CONFIGURATION`, whereas `AM_API_PRIMARY_EP_MAPPING` uses `'Current API'` for the same idea.
-
 **Who:** Admin (registers providers), API creator (Publisher) · **Tables written:** [`AM_LLM_PROVIDER`](../reference/am.md#am_llm_provider) + [`AM_LLM_PROVIDER_MODEL`](../reference/am.md#am_llm_provider_model) (at startup or by an admin), [`AM_API`](../reference/am.md#am_api), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_AI_CONFIGURATION`](../reference/am.md#am_api_ai_configuration), [`AM_API_PRIMARY_EP_MAPPING`](../reference/am.md#am_api_primary_ep_mapping), `GOV_*`, `REG_*` · **Tables read:** [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription)
 
 ## How the tables connect
@@ -67,7 +57,7 @@ sequenceDiagram
     | 19 | gpt-4o-mini | OpenAI | `4d78…` |
     | 20 | o3-mini | OpenAI | `4d78…` |
 
-3. **The API itself.** An [`AM_API`](../reference/am.md#am_api) row is created with `API_TYPE = 'HTTP'` and **`API_SUBTYPE = 'AIAPI'`** (verified), which is what marks it as an AI API. Its resources, e.g. `POST /chat/completions`, are stored in [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) like any other API's.
+3. **The API itself.** An [`AM_API`](../reference/am.md#am_api) row is created with `API_TYPE = 'HTTP'` and **`API_SUBTYPE = 'AIAPI'`**, which is what marks it as an AI API. Its resources, e.g. `POST /chat/completions`, are stored in [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) like any other API's.
 
     | API_ID | API_UUID | API_NAME | CONTEXT | API_TYPE | API_SUBTYPE | STATUS |
     |---|---|---|---|---|---|---|

@@ -1,6 +1,6 @@
 # AM_* — API Manager core
 
-112 tables. Generated from the 4.7.0 DDL.
+112 tables in APIM 4.7.0.
 
 ## AM_ALERT_EMAILLIST
 
@@ -144,9 +144,9 @@
 
 - `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_COMMENTS
 
@@ -204,9 +204,9 @@
 
 - `API_UUID` → [`AM_API`](#am_api) `API_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_ENVIRONMENT_KEYS
 
@@ -301,9 +301,9 @@
 
 - `API_UUID` → [`AM_API`](#am_api) `API_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `LABEL_UUID` → [`AM_LABEL`](#am_label) *(name-hint)*
+- `LABEL_UUID` → [`AM_LABEL`](#am_label)
 
 ## AM_API_LC_EVENT
 
@@ -334,9 +334,9 @@
 | `API_ID` | `VARCHAR(500)` | NOT NULL |
 | `EVENT_TIME` | `TIMESTAMP` | NOT NULL |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_ID` → [`AM_API`](#am_api)
 
 ## AM_API_METADATA
 
@@ -353,9 +353,9 @@
 
 - `API_UUID` → [`AM_API`](#am_api) `API_UUID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_OPERATION_MAPPING
 
@@ -388,10 +388,10 @@
 
 - `POLICY_UUID` → [`AM_OPERATION_POLICY`](#am_operation_policy) `POLICY_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_UUID` → [`AM_API`](#am_api) *(name-hint)*
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `API_UUID` → [`AM_API`](#am_api)
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_OPERATION_POLICY_MAPPING
 
@@ -430,9 +430,9 @@
 - `API_UUID` → [`AM_API`](#am_api) `API_UUID` (on delete: CASCADE)
 - `POLICY_UUID` → [`AM_OPERATION_POLICY`](#am_operation_policy) `POLICY_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_PRIMARY_EP_MAPPING
 
@@ -449,10 +449,9 @@
 
 - `API_UUID` → [`AM_API`](#am_api) `API_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `ENDPOINT_UUID` → [`AM_API_ENDPOINTS`](#am_api_endpoints) *(same-name key)*
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_PRODUCT_MAPPING
 
@@ -470,9 +469,9 @@
 - `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: CASCADE)
 - `URL_MAPPING_ID` → [`AM_API_URL_MAPPING`](#am_api_url_mapping) `URL_MAPPING_ID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_RATINGS
 
@@ -518,9 +517,9 @@
 
 - `REVISION_UUID` → [`AM_REVISION`](#am_revision) `REVISION_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_UUID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_UUID` → [`AM_API`](#am_api)
 
 ## AM_API_SEQUENCE_BACKEND
 
@@ -539,9 +538,9 @@
 
 - `API_UUID` → [`AM_API`](#am_api) `API_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_API_SERVICE_MAPPING
 
@@ -609,10 +608,10 @@
 - [`AM_API_RESOURCE_SCOPE_MAPPING`](#am_api_resource_scope_mapping) via `URL_MAPPING_ID`
 - [`AM_BACKEND_OPERATION_MAPPING`](#am_backend_operation_mapping) via `URL_MAPPING_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `API_ID` → [`AM_API`](#am_api)
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_APPLICATION
 
@@ -649,10 +648,6 @@
 - [`AM_APPLICATION_KEY_MAPPING`](#am_application_key_mapping) via `APPLICATION_ID`
 - [`AM_APPLICATION_REGISTRATION`](#am_application_registration) via `APP_ID`
 - [`AM_SUBSCRIPTION`](#am_subscription) via `APPLICATION_ID`
-
-**Likely links (no FK)**
-
-- `GROUP_ID` → [`AM_APPLICATION_GROUP_MAPPING`](#am_application_group_mapping) *(same-name key)*
 
 ## AM_APPLICATION_ATTRIBUTES
 
@@ -702,10 +697,10 @@
 
 - `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
-- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
+- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager)
 
 ## AM_APPLICATION_REGISTRATION
 
@@ -729,9 +724,9 @@
 - `SUBSCRIBER_ID` → [`AM_SUBSCRIBER`](#am_subscriber) `SUBSCRIBER_ID` (on delete: RESTRICT)
 - `APP_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager) *(name-hint)*
+- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager)
 
 ## AM_APP_KEY_DOMAIN_MAPPING
 
@@ -742,9 +737,9 @@
 | `CONSUMER_KEY` | `VARCHAR(255)` | PK |
 | `AUTHZ_DOMAIN` | `VARCHAR(255)` | PK · DEFAULT 'ALL' |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
 
 ## AM_APP_REVOKED_EVENT
 
@@ -756,9 +751,9 @@
 | `TIME_REVOKED` | `TIMESTAMP` | NOT NULL |
 | `ORGANIZATION` | `VARCHAR(100)` | PK |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
 
 ## AM_ARTIFACT
 
@@ -942,9 +937,9 @@
 | `DRAFTED_ARTIFACT` | `VARCHAR(45)` |  |
 | `PUBLISHED_ARTIFACT` | `VARCHAR(45)` |  |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_UUID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_UUID` → [`AM_API`](#am_api)
 
 ## AM_DEVPORTAL_API_REFERENCE
 
@@ -956,9 +951,9 @@
 | `ORGANIZATION` | `VARCHAR(100)` | PK · NOT NULL |
 | `REFERENCE_APIID` | `VARCHAR(256)` | NOT NULL |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_UUID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_UUID` → [`AM_API`](#am_api)
 
 ## AM_DEVPORTAL_ORG_CONTENT
 
@@ -1111,9 +1106,9 @@
 
 - `API_ID` → [`AM_API`](#am_api) `API_ID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_GW_API_ARTIFACTS
 
@@ -1161,10 +1156,6 @@
 
 - [`AM_GW_INSTANCE_ENV_MAPPING`](#am_gw_instance_env_mapping) via `GATEWAY_ID`
 - [`AM_GW_REVISION_DEPLOYMENT`](#am_gw_revision_deployment) via `GATEWAY_ID`
-
-**Likely links (no FK)**
-
-- `GATEWAY_UUID` → [`AM_GATEWAY_PERMISSIONS`](#am_gateway_permissions) *(same-name key)*
 
 ## AM_GW_INSTANCE_ENV_MAPPING
 
@@ -1234,9 +1225,9 @@
 - [`AM_GW_API_DEPLOYMENTS`](#am_gw_api_deployments) via `API_ID`
 - [`AM_GW_PLATFORM_API_ARTIFACTS`](#am_gw_platform_api_artifacts) via `API_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_ID` → [`AM_API`](#am_api)
 
 ## AM_GW_REVISION_DEPLOYMENT
 
@@ -1257,9 +1248,9 @@
 - `GATEWAY_ID` → [`AM_GW_INSTANCES`](#am_gw_instances) `GATEWAY_ID` (on delete: CASCADE)
 - `API_ID` → [`AM_API`](#am_api) `API_UUID` (on delete: CASCADE)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `REVISION_UUID` → [`AM_REVISION`](#am_revision) *(name-hint)*
+- `REVISION_UUID` → [`AM_REVISION`](#am_revision)
 
 ## AM_GW_VHOST
 
@@ -1663,9 +1654,9 @@
 
 - [`AM_SCOPE_BINDING`](#am_scope_binding) via `SCOPE_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `SCOPE_ID` → [`IDN_OAUTH2_SCOPE`](idn.md#idn_oauth2_scope) *(name-hint)*
+- `SCOPE_ID` → [`IDN_OAUTH2_SCOPE`](idn.md#idn_oauth2_scope)
 
 ## AM_SCOPE_BINDING
 
@@ -1799,9 +1790,9 @@
 | `CREATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
 | `TENANT_DOMAIN` | `VARCHAR(255)` | DEFAULT 'carbon.super' |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
 
 ## AM_SYSTEM_CONFIGS
 
@@ -1909,10 +1900,10 @@
 | `DELIVERED_AT` | `TIMESTAMP` | NULL |
 | `DELIVERY_STATE` | `INTEGER` | NOT NULL DEFAULT 0 |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_UUID` → [`AM_API`](#am_api) *(name-hint)*
-- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) *(name-hint)*
+- `API_UUID` → [`AM_API`](#am_api)
+- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application)
 
 ## AM_WEBHOOKS_UNSUBSCRIPTION
 
@@ -1929,10 +1920,10 @@
 | `HUB_LEASE_SECONDS` | `INTEGER` |  |
 | `ADDED_AT` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_UUID` → [`AM_API`](#am_api) *(name-hint)*
-- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) *(name-hint)*
+- `API_UUID` → [`AM_API`](#am_api)
+- `APPLICATION_ID` → [`AM_APPLICATION`](#am_application)
 
 ## AM_WORKFLOWS
 

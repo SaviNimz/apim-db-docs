@@ -11,7 +11,7 @@ After subscribing, a developer clicks **Generate Keys** for their application. B
 2. APIM records "application 5's **PRODUCTION** keys live in key manager *Resident Key Manager* under consumer key `abc123`" in `AM_APPLICATION_KEY_MAPPING`. The app can also have separate **SANDBOX** keys, and keys in several key managers.
 3. The app uses the consumer key and secret to get **access tokens** from the KM. It sends a token with every API call, and the gateway checks it.
 
-With the **Resident Key Manager**, the OAuth client is stored in this same database (`IDN_OAUTH_CONSUMER_APPS` and friends). **Opaque** tokens are stored too (`IDN_OAUTH2_ACCESS_TOKEN`), but in 4.7.0's default setup the **JWT** access tokens issued to JWT-type applications are **not stored at all**. This was verified on a running server. Identity Server also creates a matching *service provider* (`SP_APP`) for each client. With an **external key manager**, only APIM's mapping row is stored locally. The client and its tokens live in the external system.
+With the **Resident Key Manager**, the OAuth client is stored in this same database (`IDN_OAUTH_CONSUMER_APPS` and friends). **Opaque** tokens are stored too (`IDN_OAUTH2_ACCESS_TOKEN`), but in 4.7.0's default setup the **JWT** access tokens issued to JWT-type applications are **not stored at all**. Identity Server also creates a matching *service provider* (`SP_APP`) for each client. With an **external key manager**, only APIM's mapping row is stored locally. The client and its tokens live in the external system.
 
 !!! warning "Logical link (no foreign key)"
     The bridge between APIM and the key manager is **`AM_APPLICATION_KEY_MAPPING.CONSUMER_KEY` = `IDN_OAUTH_CONSUMER_APPS.CONSUMER_KEY`**. It isn't a foreign key, because the key manager may be external.
@@ -107,7 +107,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 
 ### AM_APPLICATION_REGISTRATION
 
-**One row =** one key-generation request for an application, key type and key manager. It's used by the approval workflow, but 4.7.0 writes it **even when no workflow is configured**, and keeps it until the application is deleted (verified on a running server).
+**One row =** one key-generation request for an application, key type and key manager. It's used by the approval workflow, but 4.7.0 writes it **even when no workflow is configured**, and keeps it until the application is deleted.
 
 | Column | What it means |
 |---|---|
@@ -131,7 +131,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 
 **One row =** an OAuth client that **APIM created for itself**. The Publisher, Developer Portal and Admin Portal web apps log in with these. It has `NAME`, `CONSUMER_KEY` (unique), `CONSUMER_SECRET` and `TENANT_DOMAIN`.
 
-**Watch out:** these clients also exist in `IDN_OAUTH_CONSUMER_APPS`, but they belong to no `AM_APPLICATION`. They're registered the first time someone logs into each portal's **web UI**. On a test server driven only through the REST APIs, this table stayed empty.
+**Watch out:** these clients also exist in `IDN_OAUTH_CONSUMER_APPS`, but they belong to no `AM_APPLICATION`. They're registered the first time a user signs in to each portal's **web UI**. If APIM is used only through its REST APIs, this table stays empty.
 
 [Full column list](../reference/am.md#am_system_apps)
 
@@ -143,7 +143,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 |---|---|
 | `API_KEY_UUID` | Primary key. |
 | `NAME` | Name given when the key was created. |
-| `API_KEY_HASH` | Hash of the key (unique), e.g. `$sha256$a858…`. The key itself isn't stored (verified). |
+| `API_KEY_HASH` | Hash of the key (unique), e.g. `$sha256$a858…`. The key itself isn't stored. |
 | `KEY_TYPE` | `PRODUCTION` or `SANDBOX`. |
 | `AUTHZ_USER` | The user who created it. |
 | `VALIDITY_PERIOD`, `TIME_CREATED`, `LAST_USED` | Lifetime and usage. |
@@ -169,7 +169,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 | `ID` | Internal number. Tokens and codes point here. |
 | `CONSUMER_KEY` | Client ID (unique). This is the value stored in `AM_APPLICATION_KEY_MAPPING.CONSUMER_KEY`. |
 | `CONSUMER_SECRET` | Client secret. It may be hashed or encrypted, depending on configuration. |
-| `APP_NAME` | Generated name: `<owner>_<application UUID>_PRODUCTION` or `…_SANDBOX` (verified on 4.7.0). |
+| `APP_NAME` | Generated name: `<owner>_<application UUID>_PRODUCTION` or `…_SANDBOX`. |
 | `USERNAME`, `TENANT_ID`, `USER_DOMAIN` | Owner of the client. |
 | `GRANT_TYPES`, `CALLBACK_URL` | Allowed OAuth grant types (space-separated) and the redirect URL. |
 | `APP_STATE` | `ACTIVE` or `REVOKED`. |
@@ -199,7 +199,7 @@ The primary key is (`APPLICATION_ID`, `KEY_TYPE`, `KEY_MANAGER`).
 | `TOKEN_STATE` | `ACTIVE`, `EXPIRED`, `REVOKED` or `INACTIVE`. |
 | `TOKEN_SCOPE_HASH`, `TOKEN_BINDING_REF`, `IDP_ID`, `CONSENTED_TOKEN` | Supporting data. |
 
-**Watch out:** in 4.x, gateways validate JWT tokens **by signature**, without reading this table. On a 4.7.0 server with default settings, a `client_credentials` JWT for a JWT-type application left **no row here**. Only the opaque token of a `DEFAULT`-type client was stored. Revoking a JWT goes to `AM_REVOKED_JWT` + `IDN_INVALID_TOKENS` instead (see [Revocation](revocation.md)).
+**Watch out:** in 4.x, gateways validate JWT tokens **by signature**, without reading this table. With default settings in 4.7.0, a JWT issued to a JWT-type application (for example with `client_credentials`) has **no row here**. Only opaque tokens, issued to `DEFAULT`-type clients, are stored. Revoking a JWT goes to `AM_REVOKED_JWT` + `IDN_INVALID_TOKENS` instead (see [Revocation](revocation.md)).
 
 [Full column list](../reference/idn.md#idn_oauth2_access_token)
 
@@ -240,7 +240,7 @@ It has `ID`, `APP_NAME`, `USERNAME`, `TENANT_ID`, `UUID` and many login-behaviou
 
 ## Example
 
-Production keys for the application `PizzaApp` (UUID `4023…`), owned by admin. These are real rows from a 4.7.0 test server:
+Production keys for the application `PizzaApp` (UUID `4023…`), owned by admin. Example rows:
 
 | Table | Row |
 |---|---|

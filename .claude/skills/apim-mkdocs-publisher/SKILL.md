@@ -66,6 +66,12 @@ When the check is clean it prints nothing. `identity-tables.md` lists tables as 
 
 The audience is a developer or support engineer who is new to APIM. Explain things so they understand them after one read.
 
+- **Official, neutral tone.** Write the site like product documentation: present tense, stating how APIM behaves. **Never describe how the content was produced.** That rules out:
+  - "verified", "confirmed", "observed", "on a running server" and "in our tests";
+  - "inferred", "not tested", "evidence", "snapshot" and "diff";
+  - "this site was generated from...".
+
+  If a fact is uncertain, leave it out, or state the genuine configuration condition ("only when database artifact synchronization is enabled"). Never hedge by describing the research. Use "you" and "APIM", not "we" or "I", and call example rows "Example".
 - **Plain language first, then details.** Start each concept with what it means in real life ("An *application* is how a developer's app identifies itself to APIM"), then name the table, then list the columns.
 - **Use one everyday analogy per domain at most**, and only where it genuinely helps.
 - Keep sentences short and use active voice. Define an acronym the first time you use it on a page (KM, JWT, VHost, LC and so on), or link to the glossary.
@@ -200,7 +206,7 @@ The schema alone can't show write order or which tables really get touched. To c
    - background governance re-runs (4.x);
    - the REST client's own OAuth rows.
 
-   A table showing both `+N` and `-N` is an update. Then fix the flow pages and add a `!!! success "Verified on a running server"` box.
+   A table showing both `+N` and `-N` is an update. Then correct the flow and domain pages. The verification only informs the content: **don't mention it in the docs**, and state the resulting facts in the neutral documentation tone.
 
 Things that trip up the REST calls:
 - **Approval workflows** are set in the registry file `/_system/governance/apimgt/applicationdata/workflow-extensions.xml`, not in tenant-config. Read and update it through the `ResourceAdminService` SOAP endpoint (`getTextContent` / `updateTextContent`, basic auth). Swap `*SimpleWorkflowExecutor` for `*ApprovalWorkflowExecutor`, then approve through the Admin API's `workflows/update-workflow-status?workflowReferenceId=<WF_EXTERNAL_REFERENCE>`.

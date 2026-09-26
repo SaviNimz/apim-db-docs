@@ -5,13 +5,6 @@
 
 **Who:** Developer Portal · **Tables written:** `AM_SUBSCRIPTION`, `AM_WORKFLOWS` (if approval is on) · **Tables read:** `AM_API`, `AM_APPLICATION`, `AM_POLICY_SUBSCRIPTION`, `AM_TIER_PERMISSIONS` / `AM_THROTTLE_TIER_PERMISSIONS`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by subscribing `PizzaApp` to PizzaShackAPI 1.0.0 on the `Gold` tier, and diffing the database.
-
-    - Written: exactly **one** `AM_SUBSCRIPTION` row, ending in `SUB_STATUS = 'UNBLOCKED'` and `SUBS_CREATE_STATE = 'SUBSCRIBE'`. Nothing else changed.
-    - With approval turned on, a second subscription stayed `ON_HOLD` with an `AM_WORKFLOWS` row until approved. See [Approval workflows](13-approval-workflows.md).
-    - `AM_SUBSCRIPTION_KEY_MAPPING` was never written.
-
 ## The flow at a glance
 
 This diagram shows a subscription with the approval workflow turned off.
@@ -41,7 +34,7 @@ sequenceDiagram
     |---|---|---|---|---|---|---|---|
     | 1 | 2 *(PizzaApp)* | 1 *(PizzaShack 1.0.0)* | `Gold` | `Gold` | `UNBLOCKED` | `SUBSCRIBE` | `1e5d…` |
 
-    These are the real values from the test run. Note that `TIER_ID_PENDING` was also set to `Gold` on a plain subscription, not left `NULL`.
+    Note that `TIER_ID_PENDING` is also set to `Gold` on a plain subscription, not left `NULL`.
 
     - `APPLICATION_ID` → `AM_APPLICATION` and `API_ID` → `AM_API` are real FKs, both with **`ON DELETE RESTRICT`** in 3.2.
     - `TIER_ID` links to `AM_POLICY_SUBSCRIPTION.NAME` for the tenant *(logical link, no FK)*. It limits calls **from this app to this API**.
@@ -70,7 +63,7 @@ sequenceDiagram
 
 ## What gets cleaned up
 
-Unsubscribing deletes the `AM_SUBSCRIPTION` row, or marks it `UN_SUBSCRIBE` while an approval is pending. On the test server, unsubscribing simply deleted the row. Because of `RESTRICT`, an API or application **cannot be deleted while a subscription row exists**. For applications, APIM deletes the subscriptions first. For APIs, APIM refuses the delete with **HTTP 409** ("active subscriptions exist"). See [Revoke & delete](12-revocation-and-delete.md).
+Unsubscribing deletes the `AM_SUBSCRIPTION` row, or marks it `UN_SUBSCRIBE` while an approval is pending. Without an approval workflow, unsubscribing simply deletes the row. Because of `RESTRICT`, an API or application **cannot be deleted while a subscription row exists**. For applications, APIM deletes the subscriptions first. For APIs, APIM refuses the delete with **HTTP 409** ("active subscriptions exist"). See [Revoke & delete](12-revocation-and-delete.md).
 
 ## Try it
 

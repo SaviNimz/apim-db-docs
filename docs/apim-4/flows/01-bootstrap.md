@@ -3,13 +3,6 @@
 !!! abstract "What happens"
     The first time APIM starts, it fills in the rows everything else depends on: the admin user and roles, the built-in Key Manager, the default rate-limit tiers, the built-in operation policies, the LLM providers and the default governance rules. Later, the first time a user does something in the Developer Portal, APIM creates a *subscriber* row for them and a **DefaultApplication**.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by comparing the database before and after the first startup, and after the first Dev Portal call. Surprises:
-
-    - **`UM_TENANT` stays empty.** The super tenant `carbon.super` (`-1234`) has no row.
-    - **`AM_SYSTEM_APPS` stays empty** after startup and after REST calls. It's only filled in when someone logs into the Publisher, Dev Portal or Admin Portal web UI.
-    - **Startup seeds more than you'd expect:** 18 subscription tiers (including Async and AI tiers), 56 operation policies, 9 LLM providers with 26 models, and a governance policy with 4 rulesets and 89 rules.
-
 **Who:** APIM server at startup, then each user on first Dev Portal action · **Tables written:** [`UM_USER`](../reference/um.md#um_user), [`UM_ROLE`](../reference/um.md#um_role), [`UM_HYBRID_ROLE`](../reference/um.md#um_hybrid_role), [`AM_KEY_MANAGER`](../reference/am.md#am_key_manager), `AM_POLICY_*`, [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy), [`AM_OPERATION_POLICY`](../reference/am.md#am_operation_policy), [`AM_LLM_PROVIDER`](../reference/am.md#am_llm_provider), `GOV_*`, [`AM_GW_INSTANCES`](../reference/am.md#am_gw_instances), [`AM_SYSTEM_CONFIGS`](../reference/am.md#am_system_configs), [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber), [`AM_APPLICATION`](../reference/am.md#am_application) · **Tables read:** [`UM_USER_ROLE`](../reference/um.md#um_user_role)
 
 ## The flow at a glance

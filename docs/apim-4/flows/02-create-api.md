@@ -3,14 +3,6 @@
 !!! abstract "What happens"
     An API creator designs an API in the Publisher: its name, version, context, resources (verb + path), scopes, endpoints and policies. APIM stores the searchable core in `AM_API` and one row per resource in `AM_API_URL_MAPPING`, and keeps the full API description (including the endpoint URLs) in the registry.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by creating `PizzaShackAPI 1.0.0` with two resources and one scope through the Publisher REST API. Surprises:
-
-    - **Governance kicks in immediately.** Creating the API also wrote [`GOV_ARTIFACT`](../reference/gov.md#gov_artifact), [`GOV_REQUEST`](../reference/gov.md#gov_request) and [`GOV_REQUEST_POLICY`](../reference/gov.md#gov_request_policy), which queue a background compliance check.
-    - **No [`AM_API_ENDPOINTS`](../reference/am.md#am_api_endpoints) row** was written. The endpoint configuration of a normal API stays in the registry artifact.
-    - **The scope is written twice:** to [`AM_SCOPE`](../reference/am.md#am_scope) and to Identity Server's [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope), each with its role binding.
-    - A lifecycle event (`NULL → CREATED`) is logged in [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event) straight away.
-
 **Who:** API creator (Publisher portal or REST API) · **Tables written:** [`AM_API`](../reference/am.md#am_api), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_SCOPE`](../reference/am.md#am_scope), [`AM_SCOPE_BINDING`](../reference/am.md#am_scope_binding), [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope), [`IDN_OAUTH2_SCOPE_BINDING`](../reference/idn.md#idn_oauth2_scope_binding), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), `GOV_ARTIFACT` / `GOV_REQUEST*`, `REG_*`, `UM_PERMISSION` · **Tables read:** [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy), [`AM_SHARED_SCOPE`](../reference/am.md#am_shared_scope), [`AM_OPERATION_POLICY`](../reference/am.md#am_operation_policy)
 
 ## The flow at a glance
@@ -56,7 +48,7 @@ sequenceDiagram
 
 3. **Resources.** Each verb + path becomes one row in [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), linked by `API_ID`. Each row carries:
     - the resource-level rate limit in `THROTTLING_TIER`, e.g. `Unlimited`, which matches [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy)`.NAME`,
-    - `AUTH_SCHEME`. In the test, resources created with "Application & Application User" security were stored as `Any`,
+    - `AUTH_SCHEME`. Resources created with "Application & Application User" security are stored as `Any`,
     - `REVISION_UUID`, which is `NULL` for the working copy.
 
     | URL_MAPPING_ID | API_ID | HTTP_METHOD | URL_PATTERN | AUTH_SCHEME | THROTTLING_TIER | REVISION_UUID |
@@ -84,7 +76,7 @@ sequenceDiagram
 
 6. **Endpoints.** For a normal API, the production and sandbox URLs are kept **in the registry artifact**. In the test, no [`AM_API_ENDPOINTS`](../reference/am.md#am_api_endpoints) row was written. That table (`API_UUID`, `ENDPOINT_UUID`, `ENDPOINT_NAME`, `KEY_TYPE`, `ENDPOINT_CONFIG`, with `REVISION_UUID = 'Current API'` for the working copy) holds *named* endpoints, which AI APIs and MCP servers use. [`AM_API_PRIMARY_EP_MAPPING`](../reference/am.md#am_api_primary_ep_mapping) records which endpoint is the primary one (see [Create an AI API](15-ai-api.md)).
 
-7. **Optional extras**, all linked to the API. These weren't used in the test:
+7. **Optional extras**, all linked to the API, written only when you use the feature:
     - **Operation policies** (e.g. "add header") attached to a resource go into [`AM_API_OPERATION_POLICY_MAPPING`](../reference/am.md#am_api_operation_policy_mapping) (`URL_MAPPING_ID`, `POLICY_UUID`, `DIRECTION`, `POLICY_ORDER`). API-level policies go into [`AM_API_POLICY_MAPPING`](../reference/am.md#am_api_policy_mapping). See [Operation policies](../domains/operation-policies.md).
     - **Labels:** [`AM_API_LABEL_MAPPING`](../reference/am.md#am_api_label_mapping) (`API_UUID`, `LABEL_UUID`).
     - **GraphQL** query-complexity values: [`AM_GRAPHQL_COMPLEXITY`](../reference/am.md#am_graphql_complexity).

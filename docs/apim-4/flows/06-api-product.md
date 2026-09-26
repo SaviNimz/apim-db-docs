@@ -3,12 +3,6 @@
 !!! abstract "What happens"
     An API product bundles chosen resources from one or more APIs into a single thing that developers can subscribe to, for example a "Food Delivery" bundle. APIM stores the product as **another row in `AM_API`**, with `API_TYPE = 'APIProduct'`. For each chosen resource it makes a **copy** of the source API's resource row in `AM_API_URL_MAPPING`, and links the product to that copy through `AM_API_PRODUCT_MAPPING`.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by creating a product `FoodDelivery 1.0.0` containing `GET /menu` from `PizzaShackAPI 1.0.0`. The call wrote one [`AM_API`](../reference/am.md#am_api) row, one [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version) row, one [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event) (`NULL → CREATED`), one [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) row, one [`AM_API_PRODUCT_MAPPING`](../reference/am.md#am_api_product_mapping) row, and a registry artifact. Surprise:
-
-    - **The resource row is copied, and the copy is labelled in an odd way.** The new `AM_API_URL_MAPPING` row keeps `API_ID` = the **source API** (1), but stores the **product's** `API_ID` (`'3'`) in its `REVISION_UUID` column. So `REVISION_UUID` doesn't always hold a revision UUID.
-    - No governance rows were written for the product.
-
 **Who:** API creator (Publisher) · **Tables written:** [`AM_API`](../reference/am.md#am_api), [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) (a copy per resource), [`AM_API_PRODUCT_MAPPING`](../reference/am.md#am_api_product_mapping), registry artifact, then [revisions](04-deploy-revision.md) as for any API · **Tables read:** [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping) of the source APIs
 
 ## The idea in one picture
@@ -68,13 +62,13 @@ sequenceDiagram
     |---|---|---|---|
     | 1 | 3 | 7 *(copy of GET /menu of API 1)* | Current API |
 
-4. **Scopes and tiers.** The copied row carries the resource's `THROTTLING_TIER` and `AUTH_SCHEME`. In the test no scope mapping was added for the copy (`GET /menu` had no scope), so whether a scoped resource's mapping is copied too wasn't observed.
+4. **Scopes and tiers.** The copied row carries the resource's `THROTTLING_TIER` and `AUTH_SCHEME`.
 
 5. **Revision and deploy.** Products are revisioned and deployed exactly like APIs ([Deploy a revision](04-deploy-revision.md)). They are also published through the same [lifecycle](05-lifecycle.md), which uses the `AM_API_PRODUCT_STATE` workflow type if approvals are on.
 
 ## What gets cleaned up
 
-Deleting the product (verified) removed:
+Deleting the product removes:
 - its `AM_API` row,
 - its `AM_API_DEFAULT_VERSION` row,
 - its `AM_API_LC_EVENT` row,

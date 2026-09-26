@@ -11,14 +11,6 @@ In 4.x you never deploy "the API". You deploy **a revision of it**:
 2. **Deploy it** to one or more **gateway environments**, such as "Default" or "Production Gateways", and pick a **VHost** (hostname) in each. APIM records the *request* in `AM_DEPLOYMENT_REVISION_MAPPING` and the target label in `AM_GW_API_DEPLOYMENTS`, then notifies the gateways.
 3. **The gateway syncs.** Each gateway fetches the artifact and reports back. APIM records the result per gateway instance in `AM_GW_REVISION_DEPLOYMENT` (e.g. `SUCCESS` / `DEPLOY`).
 
-!!! success "Verified on a running server (APIM 4.7.0)"
-    - The artifact rows appeared at *revision creation*, not at deploy time.
-    - `AM_DEPLOYED_REVISION` was **never written**, not even after the gateway confirmed.
-    - The gateway's confirmation appeared in `AM_GW_REVISION_DEPLOYMENT`.
-    - For the built-in `Default` environment, `AM_DEPLOYMENT_REVISION_MAPPING.VHOST` was stored as `NULL`.
-
-    See [Deploy a revision](../flows/04-deploy-revision.md).
-
 This means you can keep editing the current API without touching live traffic. Only deploying a new revision changes what the gateways run.
 
 Environments come from two places: `deployment.toml` (read-only, not stored in the database) and the Admin Portal (stored in `AM_GATEWAY_ENVIRONMENT`). Newer 4.x releases also track **individual gateway instances** and **"platform" (federated or external) gateways** in dedicated tables.
@@ -32,7 +24,7 @@ erDiagram
     AM_API ||--o{ AM_REVISION : "snapshots"
     AM_REVISION ||--o| AM_API_REVISION_METADATA : "tier at snapshot time"
     AM_REVISION ||--o{ AM_DEPLOYMENT_REVISION_MAPPING : "requested on env"
-    AM_REVISION ||--o{ AM_DEPLOYED_REVISION : "legacy, unused in test"
+    AM_REVISION ||--o{ AM_DEPLOYED_REVISION : "legacy"
 ```
 
 - All the FKs cascade. Deleting an API deletes its revisions, and deleting a revision deletes its deployment rows.
@@ -92,7 +84,7 @@ erDiagram
 | Column | What it means |
 |---|---|
 | `NAME` | Gateway environment **name**, e.g. `Default`. |
-| `VHOST` | Hostname chosen in that environment. `NULL` for the config-file `Default` environment (verified). |
+| `VHOST` | Hostname chosen in that environment. `NULL` for the config-file `Default` environment. |
 | `REVISION_UUID` | Revision (FK → `AM_REVISION`, cascade). |
 | `REVISION_STATUS` | E.g. approved, or waiting for a deployment-approval [workflow](workflows.md). |
 | `DISPLAY_ON_DEVPORTAL` | Whether this environment's URL is shown in the Developer Portal. |
@@ -106,7 +98,7 @@ The primary key is (`NAME`, `REVISION_UUID`).
 
 **One row =** by design, "revision R is running on environment E". It has the same shape as above (`NAME`, `VHOST`, `REVISION_UUID`, `DEPLOYED_TIME`), with an FK → `AM_REVISION`, cascade.
 
-**Watch out:** on a real 4.7.0 server with the built-in gateway, this table stayed **empty** after a successful deployment. Don't use it to decide whether a revision is live. Use [`AM_GW_REVISION_DEPLOYMENT`](#am_gw_revision_deployment) for per-gateway confirmations, and `AM_DEPLOYMENT_REVISION_MAPPING` for what was requested.
+**Watch out:** in 4.7.0 with the built-in gateway, this table stays **empty** after a successful deployment. Don't use it to decide whether a revision is live. Use [`AM_GW_REVISION_DEPLOYMENT`](#am_gw_revision_deployment) for per-gateway confirmations, and `AM_DEPLOYMENT_REVISION_MAPPING` for what was requested.
 
 [Full column list](../reference/am.md#am_deployed_revision)
 
@@ -188,7 +180,7 @@ The primary key is (`NAME`, `REVISION_UUID`).
 | `GATEWAY_ID` | Instance (FK → `AM_GW_INSTANCES`, cascade). |
 | `API_ID` | API **UUID** (FK → `AM_API.API_UUID`, cascade). |
 | `REVISION_UUID` | Which revision the instance has. |
-| `ACTION`, `STATUS` | E.g. `DEPLOY`/undeploy, and `SUCCESS`/failure. This is where a gateway's **confirmation** lands (verified). |
+| `ACTION`, `STATUS` | E.g. `DEPLOY`/undeploy, and `SUCCESS`/failure. This is where a gateway's **confirmation** lands. |
 | `LAST_UPDATED` | Epoch time. |
 
 [Full column list](../reference/am.md#am_gw_revision_deployment)
@@ -234,7 +226,7 @@ PizzaShackAPI revision 1 deployed to the `Default` environment:
 | `AM_GW_API_DEPLOYMENTS` | `API_ID = b41b…`, `REVISION_ID = 4b45…`, `LABEL = Default`, `VHOST = NULL` |
 | `AM_GW_REVISION_DEPLOYMENT` | `GATEWAY_ID = 1`, `API_ID = b41b…`, `STATUS = SUCCESS`, `ACTION = DEPLOY` (after the gateway confirms) |
 
-These are real values from a 4.7.0 test server.
+Example values:
 
 ## Try it
 
@@ -255,4 +247,4 @@ LEFT JOIN AM_GW_REVISION_DEPLOYMENT g
 - [Change lifecycle state](../flows/05-lifecycle.md)
 
 !!! note "Different in 3.x"
-    3.x has no revisions or environment tables. Publishing wrote the artifact straight into `AM_GW_API_ARTIFACTS`, keyed by a **gateway label**, with a `Publish`/`Remove` instruction (and only when the optional DB sync is enabled). See [3.x Gateway publishing](../../apim-3/domains/gateway-publishing.md).
+    3.x has no revisions or environment tables. Publishing writes the artifact straight into `AM_GW_API_ARTIFACTS`, keyed by a **gateway label**, with a `Publish`/`Remove` instruction (and only when the optional DB sync is enabled). See [3.x Gateway publishing](../../apim-3/domains/gateway-publishing.md).

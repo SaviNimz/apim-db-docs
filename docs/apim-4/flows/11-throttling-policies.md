@@ -3,20 +3,6 @@
 !!! abstract "What happens"
     An admin creates or edits **rate-limit policies** (also called tiers) in the Admin Portal. There are four families, one for each level at which a limit applies. Resource-level policies can also have *conditional groups*, e.g. "a higher limit for requests from this IP range".
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) through the Admin REST API. The calls created:
-    - an advanced (resource) policy with one conditional group holding a header condition and an IP condition, which wrote [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy), [`AM_CONDITION_GROUP`](../reference/am.md#am_condition_group), [`AM_HEADER_FIELD_CONDITION`](../reference/am.md#am_header_field_condition) and [`AM_IP_CONDITION`](../reference/am.md#am_ip_condition);
-    - an application policy, which wrote [`AM_POLICY_APPLICATION`](../reference/am.md#am_policy_application);
-    - a subscription policy with a role permission, which wrote [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription) and [`AM_THROTTLE_TIER_PERMISSIONS`](../reference/am.md#am_throttle_tier_permissions);
-    - a custom policy, which wrote [`AM_POLICY_GLOBAL`](../reference/am.md#am_policy_global);
-    - a deny policy, which wrote [`AM_BLOCK_CONDITIONS`](../reference/am.md#am_block_conditions).
-
-    Surprises:
-
-    - **`IS_DEPLOYED` stayed `0`** on every new policy, even though they were in use.
-    - **The subscription tier's role permission went to `AM_THROTTLE_TIER_PERMISSIONS`**, not `AM_TIER_PERMISSIONS`.
-    - **The block condition's value is a JSON string**, e.g. `{"invert":false,"fixedIp":"10.9.9.9"}`, and `ENABLED` is stored as the text `'true'`.
-
 **Who:** Admin (Admin Portal) · **Tables written:** [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription), [`AM_POLICY_APPLICATION`](../reference/am.md#am_policy_application), [`AM_API_THROTTLE_POLICY`](../reference/am.md#am_api_throttle_policy) + [`AM_CONDITION_GROUP`](../reference/am.md#am_condition_group) + condition tables, [`AM_POLICY_GLOBAL`](../reference/am.md#am_policy_global), [`AM_BLOCK_CONDITIONS`](../reference/am.md#am_block_conditions), [`AM_THROTTLE_TIER_PERMISSIONS`](../reference/am.md#am_throttle_tier_permissions) · **Tables read:** none
 
 ## The four policy families

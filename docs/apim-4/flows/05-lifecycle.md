@@ -3,9 +3,6 @@
 !!! abstract "What happens"
     A publisher moves an API through its lifecycle, e.g. *Created → Published*. APIM updates the API's state, logs the change in `AM_API_LC_EVENT` and, if an approval workflow is switched on, waits for approval first. Publishing is what makes an API visible in the Developer Portal.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by publishing `PizzaShackAPI 1.0.0` after deploying revision 1. The call updated `AM_API.STATUS` from `CREATED` to `PUBLISHED`, added exactly one [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event) row, and changed the registry artifact's properties. Nothing else changed: there were no gateway tables, because the gateway already had the revision, and no [`AM_API_LC_PUBLISH_EVENTS`](../reference/am.md#am_api_lc_publish_events) row.
-
 **Who:** API publisher (Publisher portal) · **Tables written:** [`AM_API`](../reference/am.md#am_api) (`STATUS`), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), registry lifecycle properties (`REG_*`), optionally [`AM_WORKFLOWS`](../reference/am.md#am_workflows) · **Tables read:** [`AM_DEPLOYMENT_REVISION_MAPPING`](../reference/am.md#am_deployment_revision_mapping)
 
 ## The lifecycle states

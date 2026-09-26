@@ -3,9 +3,6 @@
 !!! abstract "What this section is"
     Each page here follows one thing a person (or APIM itself) does, and shows **which tables get written or read, in what order, and which columns link one step to the next**.
 
-!!! success "Verified on a running server"
-    Every flow page was checked against a real WSO2 APIM 4.7.0 server (embedded H2, default config). The test drove each flow through the REST APIs and compared full database snapshots before and after each step. Each page has a green box listing what was confirmed and what was surprising.
-
 The pages are ordered roughly the way an API goes through its life. First an API creator designs and ships an API. Then a developer finds it and uses it. Finally admins keep everything under control.
 
 ## The end-to-end journey
@@ -46,7 +43,7 @@ flowchart LR
 | 15 | [Create an AI API](15-ai-api.md) | API creator (Publisher) | `AM_LLM_PROVIDER`, `AM_API_AI_CONFIGURATION` |
 
 !!! tip "Reading the flow pages"
-    Each page starts with a small sequence diagram, then walks through the steps with example rows. It finishes with a read-only SQL query you can run to see the result in your own database. See [How to read this site](../../how-to-read.md) for the diagram notation.
+    Each page starts with a small sequence diagram, then walks through the steps with example rows. It finishes with a read-only SQL query you can run to see the result in your own database. See [How to read this guide](../../how-to-read.md) for the diagram notation.
 
 !!! note "Different in 3.x"
     3.x has most of the same flows. The big difference is step 4: instead of *revisions*, 3.x publishes APIs straight to *gateway labels*. See the [3.x flows](../../apim-3/flows/index.md).

@@ -42,7 +42,7 @@ flowchart LR
 `dbscripts/multi-dc/` has variants for multi-datacentre setups. They define the same logical tables.
 
 !!! tip "One schema, many vendors"
-    `mysql.sql`, `postgresql.sql`, `oracle.sql`, `mssql.sql`, `db2.sql` and `h2.sql` all create the same logical tables. This site reads `mysql.sql` because its key syntax is the clearest.
+    `mysql.sql`, `postgresql.sql`, `oracle.sql`, `mssql.sql`, `db2.sql` and `h2.sql` all create the same logical tables. The examples in this guide use the MySQL syntax.
 
 ## Registry vs relational tables
 

@@ -5,13 +5,6 @@
 
 **Who:** Developer Portal (API consumer) · **Tables written:** `AM_SUBSCRIBER` (first time only), `AM_APPLICATION`, `AM_APPLICATION_ATTRIBUTES` (if attributes are given), `AM_APPLICATION_GROUP_MAPPING` (if sharing is on), `AM_WORKFLOWS` (if approval is on) · **Tables read:** `AM_POLICY_APPLICATION`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by creating `PizzaApp` (tier `Unlimited`, token type `JWT`, no attributes) as the first Dev Portal action of `admin`, and diffing the database.
-
-    - Written: one `AM_SUBSCRIBER` row and **two** `AM_APPLICATION` rows, the automatic `DefaultApplication` and `PizzaApp`. Both ended with status `APPROVED`.
-    - No `AM_APPLICATION_ATTRIBUTES`, `AM_APPLICATION_GROUP_MAPPING` or `AM_WORKFLOWS` rows, because none of those features were used.
-    - With approval turned on, a second app stayed at `CREATED` with an `AM_WORKFLOWS` row. See [Approval workflows](13-approval-workflows.md).
-
 ## The flow at a glance
 
 This diagram shows the rows created when a developer clicks **Save** on a new application.
@@ -40,7 +33,7 @@ sequenceDiagram
     | 1 | `DefaultApplication` | 1 | `Unlimited` | `APPROVED` | `JWT` | `2f17…` | `''` *(empty string)* |
     | 2 | `PizzaApp` | 1 | `Unlimited` | `APPROVED` | `JWT` | `c798…` | `NULL` |
 
-    These are the real rows from the test run. The DefaultApplication has the description "This is the default application".
+    The DefaultApplication has the description "This is the default application".
 
     - `SUBSCRIBER_ID` is a real FK to `AM_SUBSCRIBER` with `ON DELETE RESTRICT`: the owner can't be deleted while they own apps.
     - `(NAME, SUBSCRIBER_ID)` is unique, so one user can't have two apps with the same name. `UUID` is unique and is the ID used in REST APIs.
@@ -54,7 +47,7 @@ sequenceDiagram
     |---|---|---|---|
     | 2 | `External Reference Id` | `MOB-001` | -1234 |
 
-    This row is illustrative. The verification run sent no attributes, so nothing was written here.
+    Rows are written here only when the application is created with attributes.
 
     FK to `AM_APPLICATION` with `ON DELETE CASCADE`.
 

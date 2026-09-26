@@ -5,13 +5,6 @@
 
 **Who:** Publisher → Gateway · **Tables written (default):** `AM_API_LC_EVENT`, registry `REG_*` · **Only with the synchronizer on:** `AM_GW_PUBLISHED_API_DETAILS`, `AM_GW_API_ARTIFACTS` · **Tables read:** `AM_API`, `AM_API_URL_MAPPING`, `AM_LABELS`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by publishing PizzaShackAPI 1.0.0 and diffing the database.
-
-    - Publishing wrote **only** one `AM_API_LC_EVENT` row (`CREATED` → `PUBLISHED`) plus registry updates (the artifact's lifecycle state and history).
-    - **`AM_GW_PUBLISHED_API_DETAILS` and `AM_GW_API_ARTIFACTS` stayed empty.** The database-backed artifact sync is opt-in and off by default.
-    - **Surprise:** an API created through the REST API without `gatewayEnvironments` was *published* but **not deployed**. The gateway answered 404 until the API was updated with `gatewayEnvironments: ["Production and Sandbox"]`. After that the calls returned 200. The chosen environments are stored only in the registry artifact, not in any `AM_*` table.
-
 ## The flow at a glance
 
 This diagram shows the database-backed path, used when the synchronizer is enabled.
@@ -54,7 +47,7 @@ sequenceDiagram
     |---|---|---|---|---|
     | `8b2c…-uuid` | `Production and Sandbox` | `Publish` | *(binary blob)* | 2020-09-01 10:15 |
 
-    This example is illustrative: in the default configuration used for verification, the table stayed empty.
+    Rows like this appear only when database artifact synchronization is enabled. In the default configuration the table stays empty.
 
     - The primary key is `(GATEWAY_LABEL, API_ID)`, so re-publishing **overwrites** the row. There's no history.
     - `GATEWAY_INSTRUCTION` is `Publish` (deploy it) or `Remove` (undeploy it), in that mixed case. APIM's SQL compares against `'Publish'`. Undeploying keeps the row but flips the instruction.

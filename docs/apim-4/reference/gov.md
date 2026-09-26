@@ -1,6 +1,6 @@
 # GOV_* — API governance
 
-14 tables. Generated from the 4.7.0 DDL.
+14 tables in APIM 4.7.0.
 
 ## GOV_ARTIFACT
 

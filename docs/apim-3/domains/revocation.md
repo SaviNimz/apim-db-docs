@@ -24,7 +24,7 @@ flowchart LR
     J --> G[Gateways reject the JWT]
 ```
 
-- On a live 3.2.0 server, an explicit revoke (`/oauth2/revoke`) **deleted** the token row (and its scope rows) and inserted a copy into the audit table. A token that's merely replaced by a newer one stays in place with `TOKEN_STATE = 'REVOKED'`.
+- In 3.2.0, an explicit revoke (`/oauth2/revoke`) **deletes** the token row (and its scope rows) and inserts a copy into the audit table. A token that's merely replaced by a newer one stays in place with `TOKEN_STATE = 'REVOKED'`.
 - For JWTs, an entry is added to `AM_REVOKED_JWT`. It has **no FK** to the token row.
 
 ## The tables
@@ -35,8 +35,8 @@ flowchart LR
 
 | Column | What it means |
 |---|---|
-| `UUID` | Primary key. On the test server this was a fresh UUID for the revocation entry, not one of the token's own IDs. |
-| `SIGNATURE` | Identifies the revoked token. Despite the name, the live server stored the same short value as the token's `IDN_OAUTH2_ACCESS_TOKEN.ACCESS_TOKEN` (the JWT ID), not a signature string. |
+| `UUID` | Primary key. A new UUID for the revocation entry, not one of the token's own IDs. |
+| `SIGNATURE` | Identifies the revoked token. Despite the name, it holds the same short value as the token's `IDN_OAUTH2_ACCESS_TOKEN.ACCESS_TOKEN` (the JWT ID), not a signature string. |
 | `EXPIRY_TIMESTAMP` | When the token would expire anyway, in epoch milliseconds. Rows past this time are deleted. |
 | `TENANT_ID` | Tenant. |
 | `TOKEN_TYPE` | Kind of token, e.g. `JWT`. |

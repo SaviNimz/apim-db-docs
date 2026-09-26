@@ -1,7 +1,7 @@
 # APIM 3.x: the big picture
 
 !!! info "Source"
-    This series was generated from **WSO2 API Manager 3.2.0**, specifically its database scripts `dbscripts/apimgt/mysql.sql` and `dbscripts/mysql.sql`. Other 3.x releases share the same overall shape but may differ in a few columns.
+    This section describes the database of **WSO2 API Manager 3.2.0**. Other 3.x releases share the same overall design but may differ in a few columns.
 
 ## What APIM 3.x keeps in its database
 

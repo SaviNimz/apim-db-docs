@@ -1,6 +1,6 @@
 # SP_* — Service providers
 
-12 tables. Generated from the 3.2.0 DDL.
+12 tables in APIM 3.2.0.
 
 ## SP_APP
 
@@ -55,9 +55,9 @@
 | `CONTENT` | `BLOB` | DEFAULT NULL |
 | `IS_ENABLED` | `CHAR(1)` | NOT NULL DEFAULT '0' |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `APP_ID` → [`SP_APP`](#sp_app) *(name-hint)*
+- `APP_ID` → [`SP_APP`](#sp_app)
 
 ## SP_AUTH_STEP
 

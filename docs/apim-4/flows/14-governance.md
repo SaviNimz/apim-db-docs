@@ -3,18 +3,6 @@
 !!! abstract "What happens"
     Admins define **rulesets**, e.g. "OpenAPI best practices" or "OWASP security rules", and group them into **policies**. Each policy applies to APIs with certain labels, and is checked at certain moments such as "on create" or "on deploy". Whenever a matching API changes, APIM queues a governance request, runs the rulesets against the API and stores the result and any violations. Policies can also **block** an action when a serious rule fails.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config), using only the seeded default policy.
-    - Creating an API, and creating a new version, each wrote [`GOV_ARTIFACT`](../reference/gov.md#gov_artifact), a `PENDING` [`GOV_REQUEST`](../reference/gov.md#gov_request) and a [`GOV_REQUEST_POLICY`](../reference/gov.md#gov_request_policy).
-    - About ten seconds later the background engine had written [`GOV_POLICY_RUN`](../reference/gov.md#gov_policy_run), one [`GOV_RULESET_RUN`](../reference/gov.md#gov_ruleset_run) per ruleset (`RESULT = 0`, failed), and 16 [`GOV_RULE_VIOLATION`](../reference/gov.md#gov_rule_violation) rows per API, and had deleted the processed request.
-    - Updating the API (creating a revision) queued a new request.
-
-    Surprises:
-
-    - **Results are replaced, not accumulated.** Each new run deletes the artifact's old `GOV_RULESET_RUN` and `GOV_RULE_VIOLATION` rows and inserts fresh ones. `GOV_POLICY_RUN` is updated in place. There's no history.
-    - **The default policy is global and never blocks.** *WSO2 API Management Best Practices* has `IS_GLOBAL = 1`, checks on `API_CREATE` and `API_UPDATE` only, and uses `NOTIFY` for every severity. It links 3 of the 4 seeded rulesets. The OWASP Top 10 ruleset isn't linked.
-    - **Deleting an API** removed its `GOV_ARTIFACT` and all its run and violation rows.
-
 **Who:** Admin (sets up the rules), then APIM's governance engine (runs the checks automatically) · **Tables written:** `GOV_RULESET*`, `GOV_POLICY*`, [`GOV_ARTIFACT`](../reference/gov.md#gov_artifact), [`GOV_REQUEST`](../reference/gov.md#gov_request), [`GOV_REQUEST_POLICY`](../reference/gov.md#gov_request_policy), [`GOV_POLICY_RUN`](../reference/gov.md#gov_policy_run), [`GOV_RULESET_RUN`](../reference/gov.md#gov_ruleset_run), [`GOV_RULE_VIOLATION`](../reference/gov.md#gov_rule_violation) · **Tables read:** [`AM_API`](../reference/am.md#am_api), [`AM_API_LABEL_MAPPING`](../reference/am.md#am_api_label_mapping)
 
 ## How the rules are organised
@@ -52,7 +40,6 @@ sequenceDiagram
 ```
 
 - Checks run **asynchronously** in the background. A *blocking* action (e.g. "block deploy when an ERROR-level rule fails") is instead evaluated synchronously at that moment.
-- The rows above were all observed. Their exact order *within* one background run is inferred.
 
 ## Step by step
 
@@ -96,7 +83,7 @@ sequenceDiagram
 
 ## What gets cleaned up
 
-The `GOV_*` FKs have no ON DELETE rules, so the database blocks deleting a parent while child rows exist. APIM's code deletes in order: violations → runs → requests → artifact, and for rules: policy links → rules → ruleset. Deleting an API removed its governance data (verified: the `GOV_ARTIFACT`, `GOV_POLICY_RUN`, `GOV_RULESET_RUN` and `GOV_RULE_VIOLATION` rows all went).
+The `GOV_*` FKs have no ON DELETE rules, so the database blocks deleting a parent while child rows exist. APIM's code deletes in order: violations → runs → requests → artifact, and for rules: policy links → rules → ruleset. Deleting an API removes its governance data: the `GOV_ARTIFACT`, `GOV_POLICY_RUN`, `GOV_RULESET_RUN` and `GOV_RULE_VIOLATION` rows.
 
 ## Try it
 

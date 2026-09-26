@@ -62,7 +62,8 @@ def main(product, out):
             referenced_by[fk["ref_table"]].append((name, fk))
     logical = defaultdict(list)
     for src, col, tgt, why in implicit(tables):
-        logical[src].append((col, tgt, why))
+        if why == "name-hint":  # curated relationships only; skip same-name guesses
+            logical[src].append((col, tgt, why))
 
     fams = defaultdict(list)
     for name in sorted(tables):
@@ -73,14 +74,14 @@ def main(product, out):
 
     with open(os.path.join(out, "index.md"), "w") as f:
         f.write("# Table reference\n\n")
-        f.write(f"Every table defined in the APIM **{version}** database scripts, grouped by name prefix. ")
-        f.write("These pages are generated from `dbscripts/**/mysql.sql`, so they list every column and key. ")
-        f.write("Each table's purpose is explained on the domain pages.\n\n")
+        f.write(f"Every table in the WSO2 API Manager **{version}** databases, grouped by name prefix. ")
+        f.write("Each entry lists the table's columns, keys and relationships. ")
+        f.write("The domain pages explain what each table is for.\n\n")
         f.write('!!! info "How to read a table entry"\n')
         f.write("    - **PK** is the primary key. **Unique** lists other column sets that must be unique.\n")
         f.write("    - **Foreign keys** are relationships the database enforces.\n")
-        f.write("    - **Likely links (no FK)** are joins the application makes in code but the database does not enforce. ")
-        f.write("They're inferred from column names, so treat them as hints.\n\n")
+        f.write("    - **Related tables (not enforced)** are tables that APIM links to by value. ")
+        f.write("The database doesn't enforce these links with a foreign key.\n\n")
         f.write(f"**{len(tables)} tables** in total.\n\n| Prefix | Tables | Database |\n|---|---|---|\n")
         for fam, names in sorted(fams.items()):
             dbs = ", ".join(sorted({db_of[n] for n in names}))
@@ -89,7 +90,7 @@ def main(product, out):
     for fam, names in sorted(fams.items()):
         with open(os.path.join(out, f"{fam.lower()}.md"), "w") as f:
             f.write(f"# {FAMILY_TITLES.get(fam, fam + '_*')}\n\n")
-            f.write(f"{len(names)} tables. Generated from the {version} DDL.\n\n")
+            f.write(f"{len(names)} tables in APIM {version}.\n\n")
             for name in names:
                 t = tables[name]
                 f.write(f"## {name}\n\n")
@@ -119,9 +120,9 @@ def main(product, out):
                     for src, fk in sorted(referenced_by[name], key=lambda x: x[0]):
                         f.write(f"- {link(src, fam)} via `{', '.join(fk['cols'])}`\n")
                 if logical.get(name):
-                    f.write("\n**Likely links (no FK)**\n\n")
-                    for col, tgt, why in logical[name]:
-                        f.write(f"- `{col}` → {link(tgt, fam)} *({why})*\n")
+                    f.write("\n**Related tables (not enforced)**\n\n")
+                    for col, tgt, _ in logical[name]:
+                        f.write(f"- `{col}` → {link(tgt, fam)}\n")
                 f.write("\n")
     print(f"{version}: {len(tables)} tables across {len(fams)} families → {out}")
 

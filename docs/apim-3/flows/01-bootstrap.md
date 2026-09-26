@@ -5,15 +5,6 @@
 
 **Who:** Server startup and first Dev Portal action · **Tables written:** `UM_USER`, `UM_ROLE`, `UM_USER_ROLE`, `UM_HYBRID_ROLE`, `UM_HYBRID_USER_ROLE`, `AM_POLICY_SUBSCRIPTION`, `AM_POLICY_APPLICATION`, `AM_API_THROTTLE_POLICY`, `AM_KEY_MANAGER`, `IDN_OAUTH2_SCOPE`, `IDN_OAUTH2_SCOPE_BINDING`, registry `REG_*`, then later `AM_SUBSCRIBER` and `AM_APPLICATION` · **Tables read:** `UM_*`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by comparing the database before and after the first startup, and after the first Dev Portal action.
-
-    - Startup seeded 4 API-level, 4 application and 5 subscription policies, one `AM_KEY_MANAGER` row, the `admin` user, 7 hybrid roles, and the claim, identity-provider and registry data.
-    - **Surprise:** startup also wrote **175 `IDN_OAUTH2_SCOPE` rows and 170 `IDN_OAUTH2_SCOPE_BINDING` rows**. These are the `apim:*` scopes of APIM's own REST APIs, bound to roles.
-    - **No `UM_TENANT` row** for the super tenant, as expected.
-    - **`AM_SYSTEM_APPS` stayed empty.** Using only the REST APIs never created it. It's filled when someone signs in to the web portals.
-    - The first Dev Portal call created `AM_SUBSCRIBER` **and** a `DefaultApplication` row together.
-
 ## The flow at a glance
 
 This diagram shows the two moments that create starting data: server startup, and a user's first visit to the Developer Portal.

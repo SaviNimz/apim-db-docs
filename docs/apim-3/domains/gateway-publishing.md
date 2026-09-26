@@ -7,7 +7,7 @@
 
 A gateway needs a runtime configuration for each API: a Synapse XML file for the classic gateway, or a project for the microgateway. In 3.x, APIM builds that artifact at publish time.
 
-- **By default**, the Publisher pushes the artifact straight to each selected gateway environment, and nothing is written to these tables. On a stock 3.2.0 server, publishing an API left both tables empty.
+- **By default**, the Publisher pushes the artifact straight to each selected gateway environment, and nothing is written to these tables. In the default 3.2.0 configuration, both tables stay empty after publishing.
 - **With the synchronizer on** (`[apim.sync_runtime_artifacts.*]`), APIM **saves the artifact in the database**. It then notifies the gateways, which fetch the artifact for their **label** and deploy it.
 
 Two tables do this:

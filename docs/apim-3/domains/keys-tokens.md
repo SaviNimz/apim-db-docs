@@ -90,7 +90,7 @@ erDiagram
 
 ### AM_APPLICATION_REGISTRATION
 
-**One row =** a key-generation request for one app, key type and key manager. It's written for **every** request, not only ones waiting for approval: a live 3.2.0 server wrote it with no workflow configured.
+**One row =** a key-generation request for one app, key type and key manager. It's written for **every** request, not only ones waiting for approval, even when no workflow is configured.
 
 | Column | What it means |
 |---|---|
@@ -103,7 +103,7 @@ erDiagram
 | `INPUTS` | The requested OAuth settings: grant types, callback and so on. |
 | `TOKEN_SCOPE`, `VALIDITY_PERIOD`, `ALLOWED_DOMAINS` | Requested token settings. |
 
-**Connects to:** unique per (subscriber, app, token type, key manager). The row **stays** after the keys are generated. On a live server it was only removed when the application was deleted.
+**Connects to:** unique per (subscriber, app, token type, key manager). The row **stays** after the keys are generated, and is removed only when the application is deleted.
 
 [Full column list](../reference/am.md#am_application_registration)
 
@@ -142,7 +142,7 @@ erDiagram
 | `CONSUMER_KEY`, `CONSUMER_SECRET` | The client credentials. `CONSUMER_KEY` is unique (*logical* link to `IDN_OAUTH_CONSUMER_APPS`). |
 | `TENANT_DOMAIN`, `CREATED_TIME` | Tenant, and when it was created. |
 
-**Watch out:** these aren't developer applications and never appear in `AM_APPLICATION`. The rows are created when the web portals are first used, not at server startup. A live 3.2.0 server driven only through REST calls left this table empty.
+**Watch out:** these aren't developer applications and never appear in `AM_APPLICATION`. The rows are created when the web portals are first used, not at server startup. If the portals are only used through their REST APIs, this table stays empty.
 
 [Full column list](../reference/am.md#am_system_apps)
 
@@ -176,7 +176,7 @@ erDiagram
 | Column | What it means |
 |---|---|
 | `TOKEN_ID` | Primary key. |
-| `ACCESS_TOKEN`, `REFRESH_TOKEN` | The tokens, or their hashes if token hashing is enabled (see `ACCESS_TOKEN_HASH`). For JWT apps, a live 3.2.0 server stored the JWT's ID (a UUID) here, not the full JWT. |
+| `ACCESS_TOKEN`, `REFRESH_TOKEN` | The tokens, or their hashes if token hashing is enabled (see `ACCESS_TOKEN_HASH`). For JWT apps, this holds the JWT's ID (a UUID), not the full JWT. |
 | `CONSUMER_KEY_ID` | → `IDN_OAUTH_CONSUMER_APPS.ID` (FK, cascade). |
 | `AUTHZ_USER`, `USER_DOMAIN`, `TENANT_ID` | The user the token represents. For `client_credentials`, this is the app owner. |
 | `USER_TYPE` | `APPLICATION` or `APPLICATION_USER`. |
@@ -209,7 +209,7 @@ erDiagram
 
 **Connects to:** no FKs, and it has no primary key. `TOKEN_ID` and `CONSUMER_KEY_ID` keep the original values (*logical*).
 
-**Watch out:** on a default 3.2.0 server, explicitly revoking a token (`/oauth2/revoke`) **moved** its row here straight away. The token clean-up job also moves old rows here. So this table isn't empty on a default install.
+**Watch out:** explicitly revoking a token (`/oauth2/revoke`) **moves** its row here straight away. The token clean-up job also moves old rows here, so this table fills up during normal use.
 
 [Full column list](../reference/idn.md#idn_oauth2_access_token_audit)
 

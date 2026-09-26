@@ -1,6 +1,6 @@
 # WF_* — Workflow engine
 
-7 tables. Generated from the 4.7.0 DDL.
+7 tables in APIM 4.7.0.
 
 ## WF_BPS_PROFILE
 

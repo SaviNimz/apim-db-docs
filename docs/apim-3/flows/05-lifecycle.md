@@ -5,13 +5,6 @@
 
 **Who:** Publisher (API publisher role) · **Tables written:** `AM_API_LC_EVENT`, registry lifecycle properties, `AM_WORKFLOWS` (if approval is on), `AM_GW_*` (only if the gateway synchronizer is on), `AM_SUBSCRIPTION` (optional copy to a new version) · **Tables read:** `AM_API`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by publishing PizzaShackAPI 1.0.0 (`action=Publish`) and diffing the database.
-
-    - Written: exactly **one** `AM_API_LC_EVENT` row, `(3, API_ID 1, 'CREATED', 'PUBLISHED', 'admin', -1234, …)`, plus registry updates (the artifact's lifecycle state and the lifecycle history resource).
-    - `AM_API` itself **did not change**, because 3.2 has no status column.
-    - No `AM_GW_*` rows and no `AM_API_LC_PUBLISH_EVENTS` row were written.
-
 ## The flow at a glance
 
 This diagram shows a publish action with the approval workflow turned off.
@@ -52,7 +45,7 @@ sequenceDiagram
     - `→ BLOCKED`: the API stays deployed, but calls are rejected. Subscriptions are left alone.
     - `→ RETIRED`: undeploy from the gateways and remove it from the Developer Portal. Subscriptions are kept in the database but no longer work.
 
-5. **Publish-event tracking** → [`AM_API_LC_PUBLISH_EVENTS`](../reference/am.md#am_api_lc_publish_events) (`TENANT_DOMAIN`, `API_ID`, `EVENT_TIME`). The table exists in the schema, but no jar shipped with 3.2.0 writes to it, and publishing on a live server left it empty. Treat it as unused.
+5. **Publish-event tracking** → [`AM_API_LC_PUBLISH_EVENTS`](../reference/am.md#am_api_lc_publish_events) (`TENANT_DOMAIN`, `API_ID`, `EVENT_TIME`). The table exists in the schema, but APIM 3.2.0 doesn't write to it, so it stays empty.
 
 6. **Moving subscribers to a new version (optional).** When publishing a *new version* with "Require re-subscription" unchecked, APIM copies each active subscription of the older version into new [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) rows for the new `API_ID`. It keeps the same application and tier. "Deprecate old versions" moves the older versions to `DEPRECATED`, which adds more `AM_API_LC_EVENT` rows.
 

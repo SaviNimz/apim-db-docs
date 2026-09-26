@@ -5,16 +5,6 @@
 
 **Who:** Client app → Key Manager → Gateway · **Tables written:** `IDN_OAUTH2_ACCESS_TOKEN`, `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` (token request only, since calling the API writes nothing) · **Tables read:** `IDN_OAUTH_CONSUMER_APPS`, `AM_APPLICATION_KEY_MAPPING`, `AM_SUBSCRIPTION`, `AM_API_URL_MAPPING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_POLICY_*`, `AM_REVOKED_JWT`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by getting a `client_credentials` token for `PizzaApp`, calling `GET /pizzashack/1.0.0/menu` through the gateway, generating an API key, and diffing the database after each step.
-
-    - **The token was persisted.** A new `IDN_OAUTH2_ACCESS_TOKEN` row was written with two `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` rows (`am_application_scope`, `default`).
-    - **Surprise:** the app's previous token, the one issued during key generation, was **updated to `TOKEN_STATE = 'REVOKED'`** when the new one was issued.
-    - `ACCESS_TOKEN` held a short UUID-like value (the JWT's ID), not the full JWT.
-    - **Calling the API wrote nothing** to either database, whether the call returned 404 or 200.
-    - **Generating an API key wrote nothing.** It's a self-contained JWT.
-    - The first calls returned **404** because the API had no gateway environment selected. See [Publish to the gateway](04-publish-to-gateway.md).
-
 ## The flow at a glance
 
 This diagram shows the two phases: getting a token, then calling the API.
@@ -47,7 +37,7 @@ sequenceDiagram
     | `c23c…` | `9cd6…` | 2 | `admin` | `APPLICATION` | `client_credentials` | `REVOKED` | 3600000 |
     | `e2fc…` | `3427…` | 2 | `admin` | `APPLICATION` | `client_credentials` | `ACTIVE` | 3600000 |
 
-    These are the real rows after the second token request. The first row was issued during key generation. When the second token was issued, the first one became `REVOKED`, and `TOKEN_STATE_ID` was set to a new UUID. For JWT apps, 3.2 issues a fresh token on each request rather than reusing the active one.
+    This example shows the rows after a second token request. The first row is issued during key generation. When the second token is issued, the first one becomes `REVOKED`, and `TOKEN_STATE_ID` is set to a new UUID. For JWT apps, 3.2 issues a fresh token on each request rather than reusing the active one.
 
     - `CONSUMER_KEY_ID` is a real FK to `IDN_OAUTH_CONSUMER_APPS.ID` (the integer ID, not the key string), with `ON DELETE CASCADE`.
     - `ACCESS_TOKEN` / `ACCESS_TOKEN_HASH` identify the token. For JWTs, `ACCESS_TOKEN` holds the JWT ID (a UUID), not the full token, and `ACCESS_TOKEN_HASH` holds a SHA-256 hash.
@@ -75,7 +65,7 @@ sequenceDiagram
     | Token has the right scope | [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping) vs `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` |
     | Rate limits | subscription tier (`AM_SUBSCRIPTION.TIER_ID`), app tier (`AM_APPLICATION.APPLICATION_TIER`), resource tier (`AM_API_URL_MAPPING.THROTTLING_TIER`) and global policies, all evaluated by the Traffic Manager |
 
-5. **API keys (alternative to OAuth).** In 3.x, an *API key* is a self-contained signed JWT generated in the Developer Portal. It's **not stored** in the database: generating one on the test server changed nothing. Only a revoked key leaves a trace, in `AM_REVOKED_JWT`.
+5. **API keys (alternative to OAuth).** In 3.x, an *API key* is a self-contained signed JWT generated in the Developer Portal. It's **not stored** in the database: generating one writes nothing. Only a revoked key leaves a trace, in `AM_REVOKED_JWT`.
 
 ## What gets cleaned up
 
@@ -98,4 +88,4 @@ ORDER  BY t.TIME_CREATED DESC;
 Related domains: [Keys & tokens](../domains/keys-tokens.md) · [Scopes](../domains/scopes.md) · [Throttling policies](../domains/throttling.md)
 
 !!! note "Different in 4.x"
-    In 4.x, application JWT tokens are **not persisted**: a verified 4.7.0 run stored no token row for them. Revocation is tracked with events and `IDN_INVALID_TOKENS`, and API keys can be stored in the new `AM_API_KEY*` tables. See [Get a token & call the API (4.x)](../../apim-4/flows/10-token-and-invoke.md).
+    In 4.x, application JWT tokens are **not persisted**: no token row is stored for them. Revocation is tracked with events and `IDN_INVALID_TOKENS`, and API keys can be stored in the new `AM_API_KEY*` tables. See [Get a token & call the API (4.x)](../../apim-4/flows/10-token-and-invoke.md).

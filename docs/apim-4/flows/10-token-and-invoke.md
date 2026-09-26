@@ -3,13 +3,6 @@
 !!! abstract "What happens"
     The client app swaps its consumer key and secret for an **access token** from the Key Manager, then calls the API through the **Gateway**. The Gateway checks four things: that the token is valid, that the application is subscribed, that the token has the scopes the resource needs, and that the rate limits aren't exceeded. Then it forwards the request to the backend.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by getting a `client_credentials` token for `PizzaApp` (a JWT-type application) and calling `GET /pizzashack/1.0.0/menu` three times through the gateway (HTTP 200). Surprises:
-
-    - **The JWT access token was not stored anywhere.** No [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token) row was written. By contrast, the **opaque** token issued to the test's own REST client (a password grant) *was* stored, with a UUID in `ACCESS_TOKEN`.
-    - **Calling the API wrote nothing** to either database.
-    - **An API key is stored only as a hash.** Generating one wrote [`AM_API_KEY`](../reference/am.md#am_api_key) (`API_KEY_HASH = '$sha256$…'`) and [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping), which is linked by the application's **UUID**.
-
 **Who:** Client app, Key Manager, Gateway · **Tables written:** none for a JWT token or an API call. [`IDN_OAUTH2_ACCESS_TOKEN`](../reference/idn.md#idn_oauth2_access_token) and [`IDN_OAUTH2_ACCESS_TOKEN_SCOPE`](../reference/idn.md#idn_oauth2_access_token_scope) only for opaque (non-JWT) tokens. [`AM_API_KEY`](../reference/am.md#am_api_key) and [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping) for API keys · **Tables read (via the control plane):** [`AM_APPLICATION_KEY_MAPPING`](../reference/am.md#am_application_key_mapping), [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), `AM_POLICY_*`
 
 ## The flow at a glance
@@ -45,14 +38,14 @@ sequenceDiagram
     - `TIME_CREATED`, `VALIDITY_PERIOD`
     - `ACCESS_TOKEN` / `ACCESS_TOKEN_HASH`. For an opaque token, `ACCESS_TOKEN` is the token value itself (a UUID).
 
-    The opaque token issued to the test's REST client looked like this:
+    Example of a stored opaque token:
 
     | TOKEN_ID | CONSUMER_KEY_ID | AUTHZ_USER | USER_TYPE | GRANT_TYPE | TOKEN_STATE | VALIDITY_PERIOD |
     |---|---|---|---|---|---|---|
-    | `a109…` | 1 *(REST client)* | admin | APPLICATION_USER | password | ACTIVE | 3600000 |
+    | `a109…` | 1 | admin | APPLICATION_USER | password | ACTIVE | 3600000 |
 
     !!! info "Where do JWTs go, then?"
-        - Because JWTs aren't stored, revoking one is tracked through [`AM_REVOKED_JWT`](../reference/am.md#am_revoked_jwt) and [`IDN_INVALID_TOKENS`](../reference/idn.md#idn_invalid_tokens) instead (verified, see [Revoke & delete](12-revocation-and-delete.md)).
+        - Because JWTs aren't stored, revoking one is tracked through [`AM_REVOKED_JWT`](../reference/am.md#am_revoked_jwt) and [`IDN_INVALID_TOKENS`](../reference/idn.md#idn_invalid_tokens) instead (see [Revoke & delete](12-revocation-and-delete.md)).
         - Third-party Key Managers keep their tokens in their own systems.
 
 3. **Gateway validates the JWT.** It checks the signature and expiry locally, using the Key Manager's certificate/JWKS. It also checks the token isn't in the revoked list, which is loaded from [`AM_REVOKED_JWT`](../reference/am.md#am_revoked_jwt).
@@ -77,10 +70,10 @@ sequenceDiagram
 7. **Forward and record.** The request goes to the backend URL from the deployed revision's artifact. Analytics events go to the analytics system, **not** to these tables. In the test, three successful calls changed **no rows at all**. [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription)`.LAST_ACCESSED` exists but stayed `NULL`.
 
 !!! info "API keys: the other way in"
-    A developer can also generate an **API key** for an application. In the test (`POST …/applications/{id}/api-keys/PRODUCTION/generate` with a `keyName`):
-    - [`AM_API_KEY`](../reference/am.md#am_api_key) got one row: `API_KEY_UUID`, `NAME = 'pizza-key'`, `API_KEY_HASH = '$sha256$a858…'`, `KEY_TYPE = 'PRODUCTION'`, `API_KEY_PROPERTIES` (allowed referrers and IPs), `AUTHZ_USER = 'admin'`. **The key itself is never stored.**
-    - [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping) linked it to the app by `APPLICATION_UUID` (`4023…`), not by the integer `APPLICATION_ID`.
-    - Deleting the application removed the mapping row.
+    A developer can also generate an **API key** for an application (`POST …/applications/{id}/api-keys/PRODUCTION/generate` with a `keyName`):
+    - [`AM_API_KEY`](../reference/am.md#am_api_key) gets one row: `API_KEY_UUID`, `NAME = 'pizza-key'`, `API_KEY_HASH = '$sha256$a858…'`, `KEY_TYPE = 'PRODUCTION'`, `API_KEY_PROPERTIES` (allowed referrers and IPs), `AUTHZ_USER = 'admin'`. **The key itself is never stored.**
+    - [`AM_API_KEY_APPLICATION_MAPPING`](../reference/am.md#am_api_key_application_mapping) links it to the app by `APPLICATION_UUID` (`4023…`), not by the integer `APPLICATION_ID`.
+    - Deleting the application removes the mapping row.
 
 ## What gets cleaned up
 

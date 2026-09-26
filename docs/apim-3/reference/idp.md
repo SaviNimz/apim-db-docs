@@ -1,6 +1,6 @@
 # IDP_* — Identity providers
 
-12 tables. Generated from the 3.2.0 DDL.
+12 tables in APIM 3.2.0.
 
 ## IDP
 

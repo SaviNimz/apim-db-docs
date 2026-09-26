@@ -1,6 +1,6 @@
 # AM_* — API Manager core
 
-57 tables. Generated from the 3.2.0 DDL.
+57 tables in APIM 3.2.0.
 
 ## AM_ALERT_EMAILLIST
 
@@ -157,9 +157,9 @@
 | `API_ID` | `VARCHAR(500)` | NOT NULL |
 | `EVENT_TIME` | `TIMESTAMP` | NOT NULL |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_ID` → [`AM_API`](#am_api)
 
 ## AM_API_PRODUCT_MAPPING
 
@@ -249,9 +249,9 @@
 - [`AM_API_PRODUCT_MAPPING`](#am_api_product_mapping) via `URL_MAPPING_ID`
 - [`AM_API_RESOURCE_SCOPE_MAPPING`](#am_api_resource_scope_mapping) via `URL_MAPPING_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_ID` → [`AM_API`](#am_api)
 
 ## AM_APPLICATION
 
@@ -285,10 +285,6 @@
 - [`AM_APPLICATION_KEY_MAPPING`](#am_application_key_mapping) via `APPLICATION_ID`
 - [`AM_APPLICATION_REGISTRATION`](#am_application_registration) via `APP_ID`
 - [`AM_SUBSCRIPTION`](#am_subscription) via `APPLICATION_ID`
-
-**Likely links (no FK)**
-
-- `GROUP_ID` → [`AM_APPLICATION_GROUP_MAPPING`](#am_application_group_mapping) *(same-name key)*
 
 ## AM_APPLICATION_ATTRIBUTES
 
@@ -338,10 +334,10 @@
 
 - `APPLICATION_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: RESTRICT)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
-- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
+- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager)
 
 ## AM_APPLICATION_REGISTRATION
 
@@ -365,9 +361,9 @@
 - `SUBSCRIBER_ID` → [`AM_SUBSCRIBER`](#am_subscriber) `SUBSCRIBER_ID` (on delete: RESTRICT)
 - `APP_ID` → [`AM_APPLICATION`](#am_application) `APPLICATION_ID` (on delete: RESTRICT)
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager) *(name-hint)*
+- `KEY_MANAGER` → [`AM_KEY_MANAGER`](#am_key_manager)
 
 ## AM_APP_KEY_DOMAIN_MAPPING
 
@@ -378,9 +374,9 @@
 | `CONSUMER_KEY` | `VARCHAR(255)` | PK |
 | `AUTHZ_DOMAIN` | `VARCHAR(255)` | PK · DEFAULT 'ALL' |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
 
 ## AM_BLOCK_CONDITIONS
 
@@ -497,9 +493,9 @@
 
 - [`AM_GW_API_ARTIFACTS`](#am_gw_api_artifacts) via `API_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `API_ID` → [`AM_API`](#am_api) *(name-hint)*
+- `API_ID` → [`AM_API`](#am_api)
 
 ## AM_HEADER_FIELD_CONDITION
 
@@ -745,9 +741,9 @@
 
 - [`AM_SCOPE_BINDING`](#am_scope_binding) via `SCOPE_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `SCOPE_ID` → [`IDN_OAUTH2_SCOPE`](idn.md#idn_oauth2_scope) *(name-hint)*
+- `SCOPE_ID` → [`IDN_OAUTH2_SCOPE`](idn.md#idn_oauth2_scope)
 
 ## AM_SCOPE_BINDING
 
@@ -864,9 +860,9 @@
 | `CREATED_TIME` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP |
 | `TENANT_DOMAIN` | `VARCHAR(255)` | DEFAULT 'carbon.super' |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](idn.md#idn_oauth_consumer_apps)
 
 ## AM_TENANT_THEMES
 

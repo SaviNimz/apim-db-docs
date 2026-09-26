@@ -5,13 +5,6 @@
 
 **Who:** Publisher · **Tables written:** `AM_API`, `AM_API_URL_MAPPING`, `AM_API_RESOURCE_SCOPE_MAPPING`, `AM_API_LC_EVENT`, `AM_API_DEFAULT_VERSION`, registry `REG_*`, `UM_PERMISSION`, `UM_ROLE_PERMISSION` · **Tables read:** the old version's rows
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by copying PizzaShackAPI 1.0.0 to 2.0.0 with *default version* on, and diffing the database.
-
-    - Written: a new `AM_API` row, two copied `AM_API_URL_MAPPING` rows, one copied `AM_API_RESOURCE_SCOPE_MAPPING` row, a `CREATED` lifecycle event, an `AM_API_DEFAULT_VERSION` row, and the registry copy.
-    - **No new scope row.** The copy reuses the existing `order:write` scope by name.
-    - Right after the copy, `PUBLISHED_DEFAULT_API_VERSION` was `NULL`, because nothing was published yet.
-
 ## The flow at a glance
 
 This diagram shows that a new version is a full copy, not a link to the old version.
@@ -53,7 +46,7 @@ sequenceDiagram
     | 1 | `PizzaShackAPI` | `admin` | `2.0.0` | `NULL` |
 
     - `DEFAULT_API_VERSION` is the version marked as default in the Publisher.
-    - `PUBLISHED_DEFAULT_API_VERSION` is the default version that is actually *published*. It was `NULL` in the test run because neither version was published yet, and it only moves to `2.0.0` when 2.0.0 is published.
+    - `PUBLISHED_DEFAULT_API_VERSION` is the default version that is actually *published*. It stays `NULL` until a version is published, and moves to `2.0.0` when 2.0.0 is published.
 
     !!! warning "Logical link (no foreign key)"
         `AM_API_DEFAULT_VERSION` links to `AM_API` by `API_NAME` + `API_PROVIDER` (and the version strings), not by `API_ID`.

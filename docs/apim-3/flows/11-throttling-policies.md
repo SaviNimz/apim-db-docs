@@ -5,15 +5,6 @@
 
 **Who:** Admin Portal · **Tables written:** `AM_POLICY_SUBSCRIPTION`, `AM_POLICY_APPLICATION`, `AM_API_THROTTLE_POLICY`, `AM_CONDITION_GROUP`, `AM_IP_CONDITION`, `AM_HEADER_FIELD_CONDITION`, `AM_QUERY_PARAMETER_CONDITION`, `AM_JWT_CLAIM_CONDITION`, `AM_POLICY_GLOBAL`, `AM_BLOCK_CONDITIONS`, `AM_THROTTLE_TIER_PERMISSIONS` · **Tables read:** none of note
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by creating, through the Admin v1 REST API, an advanced policy (default 10/min, plus a group of 2/min when `User-Agent: mobile` and IP `10.0.0.1`), an application policy, a subscription policy and an IP block condition, and diffing the database.
-
-    - Advanced policy: one `AM_API_THROTTLE_POLICY` row, one `AM_CONDITION_GROUP`, one `AM_HEADER_FIELD_CONDITION` and one `AM_IP_CONDITION`.
-    - Application and subscription policies: one row each in `AM_POLICY_APPLICATION` and `AM_POLICY_SUBSCRIPTION`. No `AM_THROTTLE_TIER_PERMISSIONS` row was written because no role restriction was set.
-    - Block condition: one `AM_BLOCK_CONDITIONS` row, created through the `/throttling/blacklist` endpoint (3.2's name for deny policies).
-    - `IS_DEPLOYED` was already `1` right after the create call.
-    - **Surprise:** with `invertCondition: false`, both `IS_HEADER_FIELD_MAPPING` and `WITHIN_IP_RANGE` were stored as `FALSE`. See step 4.
-
 ## The flow at a glance
 
 This diagram shows which table each kind of policy lands in.
@@ -65,11 +56,11 @@ flowchart LR
     - Each condition group has its own quota (`QUOTA_TYPE`, `QUOTA`, `UNIT_TIME`, `TIME_UNIT`). It applies when **all** the conditions in that group match.
     - [`AM_IP_CONDITION`](../reference/am.md#am_ip_condition): `SPECIFIC_IP`, or `STARTING_IP` + `ENDING_IP`, plus the `WITHIN_IP_RANGE` flag.
     - [`AM_HEADER_FIELD_CONDITION`](../reference/am.md#am_header_field_condition) and [`AM_QUERY_PARAMETER_CONDITION`](../reference/am.md#am_query_parameter_condition): a name and value, plus an `IS_*_MAPPING` flag.
-    - **Careful with the flags.** Despite their names, the test server stored `FALSE` in both `IS_HEADER_FIELD_MAPPING` and `WITHIN_IP_RANGE` for an ordinary, **non-inverted** condition. Don't read `FALSE` as "inverted" without checking against the Admin Portal.
+    - **Careful with the flags.** Despite their names, `IS_HEADER_FIELD_MAPPING` and `WITHIN_IP_RANGE` are both `FALSE` for an ordinary, **non-inverted** condition. Don't read `FALSE` as "inverted" without checking against the Admin Portal.
     - [`AM_JWT_CLAIM_CONDITION`](../reference/am.md#am_jwt_claim_condition): `CLAIM_URI` + `CLAIM_ATTRIB` (a regex).
     - All links are real FKs with `ON DELETE CASCADE`, so deleting the policy removes the whole tree.
 
-    Example from the test run: policy `PizzaAdvanced` (`POLICY_ID = 5`, default 10/min) has condition group 1 (`QUOTA = 2`, `TIME_UNIT = 'min'`, `DESCRIPTION = 'mobile'`). That group has one `AM_HEADER_FIELD_CONDITION` (`User-Agent` = `mobile`) and one `AM_IP_CONDITION` (`SPECIFIC_IP = 10.0.0.1`). Both conditions must match for the 2/min limit to apply.
+    Example: policy `PizzaAdvanced` (`POLICY_ID = 5`, default 10/min) has condition group 1 (`QUOTA = 2`, `TIME_UNIT = 'min'`, `DESCRIPTION = 'mobile'`). That group has one `AM_HEADER_FIELD_CONDITION` (`User-Agent` = `mobile`) and one `AM_IP_CONDITION` (`SPECIFIC_IP = 10.0.0.1`). Both conditions must match for the 2/min limit to apply.
 
 5. **Custom (global) policy** → [`AM_POLICY_GLOBAL`](../reference/am.md#am_policy_global). This is an advanced rule written as a Siddhi query (`SIDDHI_QUERY`), with a `KEY_TEMPLATE` such as `$userId:$apiContext`. It isn't linked to any API. It applies to all traffic that matches the key.
 
@@ -79,7 +70,7 @@ flowchart LR
     |---|---|---|---|---|---|
     | 1 | `IP` | `{"invert":false,"fixedIp":"10.9.9.9"}` | `'true'` | `carbon.super` | `466d…` |
 
-    That's the real row from the test run. For IP types, `VALUE` is a small JSON document, and `ENABLED` is the *string* `'true'`.
+    For IP types, `VALUE` is a small JSON document, and `ENABLED` is the *string* `'true'`.
 
 7. **Who may use a tier** → [`AM_THROTTLE_TIER_PERMISSIONS`](../reference/am.md#am_throttle_tier_permissions) (`TIER`, `PERMISSIONS_TYPE` = `allow` / `deny`, `ROLES`, `TENANT_ID`). This limits which roles can subscribe with a tier. The older [`AM_TIER_PERMISSIONS`](../reference/am.md#am_tier_permissions) has the same shape and is kept for legacy tiers.
 

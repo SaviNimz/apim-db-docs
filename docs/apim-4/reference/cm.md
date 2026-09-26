@@ -1,6 +1,6 @@
 # CM_* — Consent management
 
-10 tables. Generated from the 4.7.0 DDL.
+10 tables in APIM 4.7.0.
 
 ## CM_CONSENT_RECEIPT_PROPERTY
 
@@ -76,10 +76,6 @@
 | `PURPOSE_ID` | `INTEGER` | NOT NULL |
 | `CM_PII_CATEGORY_ID` | `INTEGER` | NOT NULL |
 | `IS_MANDATORY` | `INTEGER` | NOT NULL |
-
-**Likely links (no FK)**
-
-- `PURPOSE_ID` → [`CM_SP_PURPOSE_ASSOC`](#cm_sp_purpose_assoc) *(same-name key)*
 
 ## CM_RECEIPT
 

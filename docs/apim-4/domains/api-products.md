@@ -10,9 +10,6 @@ Say you have a *Menu API* and an *Order API*, and you want to sell a "Pizza Star
 - APIM writes **one `AM_API` row** for the product, with `API_TYPE = 'APIProduct'`. The product has its own name, context, version, lifecycle, subscriptions and revisions, exactly like an API.
 - For each borrowed resource, APIM **copies** the original API's `AM_API_URL_MAPPING` row. The copy keeps `API_ID` = the original API, and stores the product's `API_ID` (as text) in `REVISION_UUID`. APIM then writes **one `AM_API_PRODUCT_MAPPING` row** pointing at that copy.
 
-!!! success "Verified on a running server (APIM 4.7.0)"
-    Creating a product with `GET /menu` from PizzaShackAPI wrote a new `AM_API_URL_MAPPING` row (`URL_MAPPING_ID = 7`, `API_ID = 1`, `REVISION_UUID = '3'`) and `AM_API_PRODUCT_MAPPING` (`API_ID = 3`, `URL_MAPPING_ID = 7`, `REVISION_UUID = 'Current API'`). Deleting the product removed both. See [Create an API product](../flows/06-api-product.md).
-
 So consumers subscribe to the product (`AM_SUBSCRIPTION.API_ID` = the product's `API_ID`), and the gateway routes each call to the underlying API's backend.
 
 ## How the tables connect
@@ -27,7 +24,7 @@ erDiagram
 ```
 
 - The top `AM_API` row is the *product*. The copied resource row still names the *original* API in `API_ID`, which isn't an FK.
-- Both FKs on the mapping cascade. Deleting the product removed its mapping and its copied resource rows (verified).
+- Both FKs on the mapping cascade. Deleting the product removes its mapping and its copied resource rows.
 
 ## The tables
 
@@ -40,7 +37,7 @@ erDiagram
 | `API_PRODUCT_MAPPING_ID` | Primary key. |
 | `API_ID` | The **product's** `AM_API.API_ID` (FK, cascade). |
 | `URL_MAPPING_ID` | The **copied** resource row in `AM_API_URL_MAPPING` (FK, cascade). That row carries the original API's `API_ID`. |
-| `REVISION_UUID` | Which copy of the product this row belongs to: `'Current API'` for the current product (verified), or a revision UUID for snapshots. This is a *logical link* to `AM_REVISION`. |
+| `REVISION_UUID` | Which copy of the product this row belongs to: `'Current API'` for the current product, or a revision UUID for snapshots. This is a *logical link* to `AM_REVISION`. |
 
 **Watch out:**
 
@@ -51,7 +48,7 @@ erDiagram
 
 ## Example
 
-These are real rows from a 4.7.0 test server:
+Example rows:
 
 | Table | Row |
 |---|---|

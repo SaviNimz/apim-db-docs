@@ -3,13 +3,6 @@
 !!! abstract "What happens"
     A developer creates an **application** in the Developer Portal. It's the identity their software will use to call APIs. APIM makes sure the developer has a subscriber row, then stores the application with its rate-limit tier, its token type and any custom attributes.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by creating `PizzaApp` through the Dev Portal REST API as `admin`. Because it was admin's first Dev Portal action, the one call wrote **three** rows: the [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber) row, a **DefaultApplication**, and `PizzaApp` itself. Both apps landed directly as `APPROVED`, because no workflow was enabled. Surprises:
-
-    - **`SHARED_ORGANIZATION` was `'private'`** for the app created through REST, but `NULL` for the DefaultApplication.
-    - **No [`AM_APPLICATION_ATTRIBUTES`](../reference/am.md#am_application_attributes) rows** were written, because no custom attributes were sent.
-    - A pending app, with approval switched on, was verified separately in [Approval workflows](13-approval-workflows.md).
-
 **Who:** Developer (Dev Portal or REST API) · **Tables written:** [`AM_SUBSCRIBER`](../reference/am.md#am_subscriber) (first time only, together with a DefaultApplication), [`AM_APPLICATION`](../reference/am.md#am_application), [`AM_APPLICATION_ATTRIBUTES`](../reference/am.md#am_application_attributes), [`AM_APPLICATION_GROUP_MAPPING`](../reference/am.md#am_application_group_mapping), optionally [`AM_WORKFLOWS`](../reference/am.md#am_workflows) · **Tables read:** [`AM_POLICY_APPLICATION`](../reference/am.md#am_policy_application)
 
 ## How the tables connect

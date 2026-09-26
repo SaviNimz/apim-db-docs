@@ -2,9 +2,6 @@
 
 These are the things that most often trip people up when they read or query the APIM 3.x database.
 
-!!! success "Verified on a running server"
-    Gotchas 11–16 were observed directly on WSO2 APIM 3.2.0 (H2, default config) by running each [core flow](flows/index.md) and comparing the database before and after.
-
 ## 1. The API UUID isn't in `AM_API`
 
 `AM_API` only has an integer `API_ID`. The UUID used in REST APIs is the registry artifact id (`REG_RESOURCE.REG_UUID`). To go from a UUID to an `AM_API` row, look up the artifact's provider, name and version in the registry, then match on `AM_API (API_PROVIDER, API_NAME, API_VERSION)`. See [Registry](domains/registry.md).
@@ -59,7 +56,7 @@ An API product is a row in `AM_API` with `API_TYPE = 'APIProduct'` (that exact c
 
 ## 10. Some tables exist but no bundled component writes them
 
-`AM_SCOPE`, `AM_SCOPE_BINDING`, `AM_POLICY_HARD_THROTTLING`, `AM_API_LC_PUBLISH_EVENTS` and `AM_USAGE_UPLOADED_FILES` are created by the 3.2.0 script, but no jar shipped in 3.2.0 references them. API scopes actually live in `IDN_OAUTH2_SCOPE`. Expect these tables to be empty.
+`AM_SCOPE`, `AM_SCOPE_BINDING`, `AM_POLICY_HARD_THROTTLING`, `AM_API_LC_PUBLISH_EVENTS` and `AM_USAGE_UPLOADED_FILES` are part of the 3.2.0 schema, but APIM 3.2.0 doesn't use them. API scopes actually live in `IDN_OAUTH2_SCOPE`. Expect these tables to be empty.
 
 ## 11. Subscribers are created lazily
 
@@ -67,12 +64,12 @@ A user can exist in `UM_USER` without an `AM_SUBSCRIBER` row. The subscriber row
 
 ## 12. Tokens are stored, but not quite as you'd expect
 
-With JWT access tokens (the 3.x default for new applications, `AM_APPLICATION.TOKEN_TYPE = 'JWT'`), every issued token still gets an `IDN_OAUTH2_ACCESS_TOKEN` row, but the gateway validates the JWT signature **without** a database lookup. On a live 3.2.0 server:
+With JWT access tokens (the 3.x default for new applications, `AM_APPLICATION.TOKEN_TYPE = 'JWT'`), every issued token still gets an `IDN_OAUTH2_ACCESS_TOKEN` row, but the gateway validates the JWT signature **without** a database lookup. In 3.2.0:
 
-- `ACCESS_TOKEN` held the JWT's ID (a UUID), not the full JWT.
-- Getting a new token for the same app marked the previous one `TOKEN_STATE = 'REVOKED'` in place.
-- Explicitly revoking a token **moved** its row to `IDN_OAUTH2_ACCESS_TOKEN_AUDIT` and added an `AM_REVOKED_JWT` row.
-- API keys (self-contained JWTs) and API calls wrote nothing.
+- `ACCESS_TOKEN` holds the JWT's ID (a UUID), not the full JWT.
+- Getting a new token for the same app marks the previous one `TOKEN_STATE = 'REVOKED'` in place.
+- Explicitly revoking a token **moves** its row to `IDN_OAUTH2_ACCESS_TOKEN_AUDIT` and adds an `AM_REVOKED_JWT` row.
+- API keys (self-contained JWTs) and API calls write nothing to the database.
 
 See [Revocation](domains/revocation.md) and [Get a token & call the API](flows/10-token-and-invoke.md).
 
@@ -82,7 +79,7 @@ Saving changes to an API **deletes all its `AM_API_URL_MAPPING` rows and inserts
 
 ## 14. The gateway tables are usually empty
 
-`AM_GW_PUBLISHED_API_DETAILS` and `AM_GW_API_ARTIFACTS` are only written when the gateway artifact synchronizer is turned on. On a default server, publishing an API writes just an `AM_API_LC_EVENT` row. Also, an API with no gateway environment selected is published but **not deployed**, and the gateway returns 404. See [Publish to the gateway](flows/04-publish-to-gateway.md).
+`AM_GW_PUBLISHED_API_DETAILS` and `AM_GW_API_ARTIFACTS` are only written when the gateway artifact synchronizer is turned on. In the default configuration, publishing an API writes just an `AM_API_LC_EVENT` row. Also, an API with no gateway environment selected is published but **not deployed**, and the gateway returns 404. See [Publish to the gateway](flows/04-publish-to-gateway.md).
 
 ## 15. Generating keys writes more than you'd think
 

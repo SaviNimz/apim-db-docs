@@ -1,6 +1,6 @@
 # UM_* — Users, roles, tenants
 
-24 tables. Generated from the 3.2.0 DDL.
+24 tables in APIM 3.2.0.
 
 ## UM_ACCOUNT_MAPPING
 
@@ -180,10 +180,6 @@
 
 - [`UM_ROLE_PERMISSION`](#um_role_permission) via `UM_PERMISSION_ID, UM_TENANT_ID`
 - [`UM_USER_PERMISSION`](#um_user_permission) via `UM_PERMISSION_ID, UM_TENANT_ID`
-
-**Likely links (no FK)**
-
-- `UM_MODULE_ID` → [`UM_MODULE_ACTIONS`](#um_module_actions) *(same-name key)*
 
 ## UM_PROFILE_CONFIG
 

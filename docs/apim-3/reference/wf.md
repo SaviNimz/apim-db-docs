@@ -1,6 +1,6 @@
 # WF_* — Workflow engine
 
-7 tables. Generated from the 3.2.0 DDL.
+7 tables in APIM 3.2.0.
 
 ## WF_BPS_PROFILE
 
@@ -89,10 +89,6 @@
 **Foreign keys**
 
 - `WORKFLOW_ID` → [`WF_WORKFLOW`](#wf_workflow) `ID` (on delete: CASCADE)
-
-**Likely links (no FK)**
-
-- `EVENT_ID` → [`AM_API_LC_EVENT`](am.md#am_api_lc_event) *(same-name key)*
 
 ## WF_WORKFLOW_CONFIG_PARAM
 

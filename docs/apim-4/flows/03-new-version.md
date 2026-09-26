@@ -3,12 +3,6 @@
 !!! abstract "What happens"
     The creator copies an existing API into a new version, for example PizzaShack 1.0.0 → 2.0.0. In the database, a new version is simply **a brand-new API**: a new `AM_API` row with the same name and provider. It gets its own resources and scopes. Optionally, one version is marked as the *default version*.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by copying `PizzaShackAPI 1.0.0` to `2.0.0` with *default version* ticked. The copy wrote a new [`AM_API`](../reference/am.md#am_api) row, a new lifecycle event (`NULL → CREATED`), two new URL mappings, one scope mapping, one [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version) row, a new registry artifact and a governance request. Surprises:
-
-    - **No new scope.** [`AM_SCOPE`](../reference/am.md#am_scope) and [`IDN_OAUTH2_SCOPE`](../reference/idn.md#idn_oauth2_scope) were untouched, because both versions share the `order:write` scope by name.
-    - **`PUBLISHED_DEFAULT_API_VERSION` stays `NULL`** until a default version is actually published.
-
 **Who:** API creator (Publisher) · **Tables written:** [`AM_API`](../reference/am.md#am_api), [`AM_API_LC_EVENT`](../reference/am.md#am_api_lc_event), [`AM_API_URL_MAPPING`](../reference/am.md#am_api_url_mapping), [`AM_API_RESOURCE_SCOPE_MAPPING`](../reference/am.md#am_api_resource_scope_mapping), [`AM_API_DEFAULT_VERSION`](../reference/am.md#am_api_default_version), `GOV_ARTIFACT` / `GOV_REQUEST*`, `REG_*` · **Tables read:** everything belonging to the source version
 
 ## The flow at a glance

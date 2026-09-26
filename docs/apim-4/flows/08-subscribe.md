@@ -3,9 +3,6 @@
 !!! abstract "What happens"
     A developer subscribes one of their applications to a published API and picks a **subscription tier**, e.g. Gold. APIM stores one row in `AM_SUBSCRIPTION` that joins the application to the API. That row is the "permission slip" the gateway checks on every call.
 
-!!! success "Verified on a running server"
-    Confirmed on WSO2 APIM 4.7.0 (embedded H2, default config) by subscribing `PizzaApp` to `PizzaShackAPI 1.0.0` on the `Gold` tier. With no workflow, the call wrote exactly **one** row: [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), saved straight away as `SUB_STATUS = 'UNBLOCKED'`, `SUBS_CREATE_STATE = 'SUBSCRIBE'`. With the approval workflow on, a second subscription was saved as `ON_HOLD` together with an [`AM_WORKFLOWS`](../reference/am.md#am_workflows) row, and approval flipped it to `UNBLOCKED`. Unsubscribing deleted the row.
-
 **Who:** Developer (Dev Portal) · **Tables written:** [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription), optionally [`AM_WORKFLOWS`](../reference/am.md#am_workflows) · **Tables read:** [`AM_API`](../reference/am.md#am_api), [`AM_APPLICATION`](../reference/am.md#am_application), [`AM_POLICY_SUBSCRIPTION`](../reference/am.md#am_policy_subscription), [`AM_TIER_PERMISSIONS`](../reference/am.md#am_tier_permissions)
 
 ## How the tables connect
@@ -77,7 +74,7 @@ sequenceDiagram
 
 - Deleting the application cascades and removes its subscriptions.
 - The FK to `AM_API` would cascade too, but **APIM refuses to delete an API that still has subscriptions** (HTTP 409, "active subscriptions exist"). You have to remove the subscriptions first.
-- Unsubscribing deletes the row (verified) and sends an event, so the gateways drop it from memory.
+- Unsubscribing deletes the row and sends an event, so the gateways drop it from memory.
 
 ## Try it
 

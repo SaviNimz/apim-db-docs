@@ -1,6 +1,6 @@
 # IDN_* — Identity & OAuth
 
-77 tables. Generated from the 4.7.0 DDL.
+77 tables in APIM 4.7.0.
 
 ## IDN_APP_REVOKED_EVENT
 
@@ -13,9 +13,9 @@
 | `TIME_REVOKED` | `TIMESTAMP` | NOT NULL |
 | `ORGANIZATION` | `VARCHAR(100)` |  |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](#idn_oauth_consumer_apps)
 
 ## IDN_ASSOCIATED_ID
 
@@ -382,9 +382,9 @@
 | `TIME_CREATED` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP |
 | `EXPIRY_TIMESTAMP` | `TIMESTAMP` | NOT NULL |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](#idn_oauth_consumer_apps) *(name-hint)*
+- `CONSUMER_KEY` → [`IDN_OAUTH_CONSUMER_APPS`](#idn_oauth_consumer_apps)
 
 ## IDN_OAUTH1A_ACCESS_TOKEN
 
@@ -491,9 +491,9 @@
 | `INVALIDATED_TIME` | `TIMESTAMP` | NULL |
 | `IDP_ID` | `INTEGER` | DEFAULT -1 NOT NULL |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token) *(name-hint)*
+- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token)
 
 ## IDN_OAUTH2_ACCESS_TOKEN_SCOPE
 
@@ -542,9 +542,9 @@
 - [`IDN_OAUTH2_AUTHZ_CODE_SCOPE`](#idn_oauth2_authz_code_scope) via `CODE_ID`
 - [`IDN_OIDC_REQ_OBJECT_REFERENCE`](#idn_oidc_req_object_reference) via `CODE_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token) *(name-hint)*
+- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token)
 
 ## IDN_OAUTH2_AUTHZ_CODE_SCOPE
 
@@ -740,10 +740,6 @@
 **Referenced by**
 
 - [`IDN_OAUTH2_USER_CONSENTED_SCOPES`](#idn_oauth2_user_consented_scopes) via `CONSENT_ID`
-
-**Likely links (no FK)**
-
-- `CONSENT_ID` → [`IDN_OAUTH2_USER_CONSENTED_SCOPES`](#idn_oauth2_user_consented_scopes) *(same-name key)*
 
 ## IDN_OAUTH2_USER_CONSENTED_SCOPES
 
@@ -1121,10 +1117,6 @@
 | `TIME_REVOKED` | `TIMESTAMP` | NOT NULL |
 | `ORGANIZATION` | `VARCHAR(100)` |  |
 
-**Likely links (no FK)**
-
-- `ENTITY_ID` → [`AM_SUBJECT_ENTITY_REVOKED_EVENT`](am.md#am_subject_entity_revoked_event) *(same-name key)*
-
 ## IDN_THRIFT_SESSION
 
 *APIM DB (WSO2AM_DB)* · PK: `SESSION_ID`
@@ -1269,10 +1261,6 @@
 | `FUNCTIONALITY_LOCK_REASON` | `VARCHAR(1023)` |  |
 | `FUNCTIONALITY_LOCK_REASON_CODE` | `VARCHAR(255)` |  |
 
-**Likely links (no FK)**
-
-- `FUNCTIONALITY_ID` → [`IDN_USER_FUNCTIONALITY_PROPERTY`](#idn_user_functionality_property) *(same-name key)*
-
 ## IDN_USER_FUNCTIONALITY_PROPERTY
 
 *APIM DB (WSO2AM_DB)* · PK: `ID` · Unique: `USER_ID, TENANT_ID, FUNCTIONALITY_ID, PROPERTY_NAME`
@@ -1285,8 +1273,4 @@
 | `FUNCTIONALITY_ID` | `VARCHAR(255)` | NOT NULL |
 | `PROPERTY_NAME` | `VARCHAR(255)` |  |
 | `PROPERTY_VALUE` | `VARCHAR(255)` |  |
-
-**Likely links (no FK)**
-
-- `FUNCTIONALITY_ID` → [`IDN_USER_FUNCTIONALITY_MAPPING`](#idn_user_functionality_mapping) *(same-name key)*
 

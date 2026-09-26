@@ -28,7 +28,7 @@ flowchart LR
 ```
 
 - The Publisher, Dev Portal and Key Manager all read and write both main databases.
-- The gateway pulls published API artifacts from `WSO2AM_DB` only when the gateway artifact synchronizer is on. By default the Publisher pushes artifacts to the gateways instead, and a live 3.2.0 server wrote no artifact rows (see [Gateway publishing](domains/gateway-publishing.md)).
+- The gateway pulls published API artifacts from `WSO2AM_DB` only when the gateway artifact synchronizer is on. By default the Publisher pushes artifacts to the gateways instead, and no artifact rows are written (see [Gateway publishing](domains/gateway-publishing.md)).
 - Every node keeps its own local registry.
 
 !!! tip "Using another database vendor"

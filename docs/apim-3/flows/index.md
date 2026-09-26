@@ -30,9 +30,6 @@ flowchart LR
 
 ## All flows
 
-!!! success "Verified on a running server"
-    Every flow below was run once on WSO2 APIM 3.2.0 (H2, default config) through the REST APIs, with the database compared before and after each step. Each page has a box saying what was confirmed and what was surprising.
-
 | # | Flow | Who does it | Main tables written |
 |---|---|---|---|
 | 1 | [Setup & first user](01-bootstrap.md) | Server startup, first Dev Portal action | `UM_USER`, `AM_POLICY_*`, `AM_KEY_MANAGER`, `IDN_OAUTH2_SCOPE`, `AM_SUBSCRIBER` |

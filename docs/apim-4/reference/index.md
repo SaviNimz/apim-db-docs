@@ -1,11 +1,11 @@
 # Table reference
 
-Every table defined in the APIM **4.7.0** database scripts, grouped by name prefix. These pages are generated from `dbscripts/**/mysql.sql`, so they list every column and key. Each table's purpose is explained on the domain pages.
+Every table in the WSO2 API Manager **4.7.0** databases, grouped by name prefix. Each entry lists the table's columns, keys and relationships. The domain pages explain what each table is for.
 
 !!! info "How to read a table entry"
     - **PK** is the primary key. **Unique** lists other column sets that must be unique.
     - **Foreign keys** are relationships the database enforces.
-    - **Likely links (no FK)** are joins the application makes in code but the database does not enforce. They're inferred from column names, so treat them as hints.
+    - **Related tables (not enforced)** are tables that APIM links to by value. The database doesn't enforce these links with a foreign key.
 
 **298 tables** in total.
 

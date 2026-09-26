@@ -1,6 +1,6 @@
 # REG_* — Registry
 
-17 tables. Generated from the 3.2.0 DDL.
+17 tables in APIM 3.2.0.
 
 ## REG_ASSOCIATION
 

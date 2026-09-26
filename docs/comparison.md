@@ -1,6 +1,6 @@
 # 3.x vs 4.x: what changed
 
-This page compares the **APIM 3.2.0** database (the [3.x series](apim-3/index.md)) with the **APIM 4.7.0** database (the [4.x series](apim-4/index.md)). It's based on a diff of the two products' `dbscripts/apimgt/mysql.sql` and `dbscripts/mysql.sql` files.
+This page compares the **APIM 3.2.0** database (the [3.x series](apim-3/index.md)) with the **APIM 4.7.0** database (the [4.x series](apim-4/index.md)). It covers the table definitions and how APIM uses them.
 
 !!! abstract "The short version"
     The core of the model survives unchanged: **subscriber → application → subscription ← API**, plus keys and throttling policies. 4.x builds a lot around that core:
@@ -52,7 +52,7 @@ flowchart LR
 ```
 
 - `AM_GW_API_ARTIFACTS` changed its key from `(GATEWAY_LABEL, API_ID)` to `(REVISION_ID, API_ID)`. It also lost `GATEWAY_INSTRUCTION`, because deploy and undeploy state now lives in the deployment tables.
-- Creating a revision writes its artifact to `AM_GW_API_ARTIFACTS` straight away. Deploying the revision then writes `AM_DEPLOYMENT_REVISION_MAPPING` (the request), `AM_GW_API_DEPLOYMENTS`, and `AM_GW_REVISION_DEPLOYMENT`, which records the gateway's `SUCCESS` acknowledgement. On a default 4.7.0 run, `AM_DEPLOYED_REVISION` was never written. Environments and VHosts created in the Admin Portal are stored in `AM_GATEWAY_ENVIRONMENT` and `AM_GW_VHOST`, but the Default environment from `deployment.toml` isn't.
+- Creating a revision writes its artifact to `AM_GW_API_ARTIFACTS` straight away. Deploying the revision then writes `AM_DEPLOYMENT_REVISION_MAPPING` (the request), `AM_GW_API_DEPLOYMENTS`, and `AM_GW_REVISION_DEPLOYMENT`, which records the gateway's `SUCCESS` acknowledgement. `AM_DEPLOYED_REVISION` isn't used by the built-in gateway. Environments and VHosts created in the Admin Portal are stored in `AM_GATEWAY_ENVIRONMENT` and `AM_GW_VHOST`, but the Default environment from `deployment.toml` isn't.
 - 20 tables now carry a revision column. The working copy of an API has the sentinel value `'Current API'` or `NULL` there. Revision rows copy the URL mappings, endpoints, policies and so on, each tagged with the revision's UUID.
 
 See [Revisions & deployment (4.x)](apim-4/domains/revisions-deployment.md) and [Gateway publishing (3.x)](apim-3/domains/gateway-publishing.md).
@@ -324,9 +324,9 @@ In 3.x, APIM's code had to delete the children first. In 4.x, the database does 
 | Governance check | — | [4.x](apim-4/flows/14-governance.md) | New in 4.x |
 | Create an AI API | — | [4.x](apim-4/flows/15-ai-api.md) | New in 4.x |
 
-## Verified behaviour differences
+## Behavior differences
 
-These differences were observed by running the same flows on **3.2.0** and **4.7.0**, both using the default H2 setup, and diffing the databases after each step. The schema alone doesn't show them.
+Some differences between **3.2.0** and **4.7.0** don't show up in the table definitions. They're about how APIM uses the tables at runtime.
 
 | Behaviour | 3.2.0 | 4.7.0 |
 |---|---|---|

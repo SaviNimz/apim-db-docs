@@ -1,6 +1,6 @@
 # UM_* — Users, roles, tenants
 
-34 tables. Generated from the 4.7.0 DDL.
+34 tables in APIM 4.7.0.
 
 ## UM_ACCOUNT_MAPPING
 
@@ -271,10 +271,6 @@
 
 - [`UM_ORG_ROLE_PERMISSION`](#um_org_role_permission) via `UM_PERMISSION_ID`
 
-**Likely links (no FK)**
-
-- `UM_RESOURCE_ID` → [`UM_PERMISSION`](#um_permission) *(same-name key)*
-
 ## UM_ORG_ROLE
 
 *Shared DB (WSO2SHARED_DB)* · PK: `UM_ROLE_ID`
@@ -307,10 +303,6 @@
 **Foreign keys**
 
 - `UM_ROLE_ID` → [`UM_ORG_ROLE`](#um_org_role) `UM_ROLE_ID` (on delete: CASCADE)
-
-**Likely links (no FK)**
-
-- `UM_GROUP_ID` → [`UM_GROUP_UUID_DOMAIN_MAPPER`](#um_group_uuid_domain_mapper) *(same-name key)*
 
 ## UM_ORG_ROLE_PERMISSION
 
@@ -355,10 +347,6 @@
 
 - [`UM_ROLE_PERMISSION`](#um_role_permission) via `UM_PERMISSION_ID, UM_TENANT_ID`
 - [`UM_USER_PERMISSION`](#um_user_permission) via `UM_PERMISSION_ID, UM_TENANT_ID`
-
-**Likely links (no FK)**
-
-- `UM_MODULE_ID` → [`UM_MODULE_ACTIONS`](#um_module_actions) *(same-name key)*
 
 ## UM_PROFILE_CONFIG
 

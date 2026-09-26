@@ -56,7 +56,7 @@ erDiagram
 
 **One row =** a record that an API was published (`TENANT_DOMAIN`, `API_ID`, `EVENT_TIME`).
 
-**Watch out:** `API_ID` has no FK. The 4.7.0 data-access code we inspected doesn't read or write this table, so treat it as legacy. Use `AM_API_LC_EVENT` for lifecycle history.
+**Watch out:** `API_ID` has no FK. APIM 4.7.0 doesn't read or write this table, so treat it as legacy. Use `AM_API_LC_EVENT` for lifecycle history.
 
 [Full column list](../reference/am.md#am_api_lc_publish_events)
 

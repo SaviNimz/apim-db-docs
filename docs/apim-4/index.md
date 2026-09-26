@@ -1,11 +1,11 @@
 # APIM 4.x: the big picture
 
 !!! info "Which version is this?"
-    This section documents the database of **WSO2 API Manager 4.7.0**. It's generated from the scripts in `wso2am-4.7.0/dbscripts/`. Other 4.x releases share the same core design, but newer releases add tables.
+    This section describes the database of **WSO2 API Manager 4.7.0**. Other 4.x releases share the same core design, but newer releases add tables.
 
 ## APIM in one paragraph
 
-API Manager lets **API creators** design APIs in the *Publisher* and deploy them to *gateways*. **API consumers** find those APIs in the *Developer Portal*, create an *application*, *subscribe* it to APIs and generate OAuth *keys*. Their software then gets an *access token* and calls the API through the gateway, which checks the token, the subscription and the rate limits. Almost every one of those steps leaves rows in the database. This site explains those rows.
+API Manager lets **API creators** design APIs in the *Publisher* and deploy them to *gateways*. **API consumers** find those APIs in the *Developer Portal*, create an *application*, *subscribe* it to APIs and generate OAuth *keys*. Their software then gets an *access token* and calls the API through the gateway, which checks the token, the subscription and the rate limits. Almost every one of those steps leaves rows in the database. This section explains those rows.
 
 ## The numbers
 

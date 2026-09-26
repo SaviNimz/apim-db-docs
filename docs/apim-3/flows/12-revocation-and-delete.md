@@ -5,16 +5,6 @@
 
 **Who:** Dev Portal, Publisher, Admin Portal, Key Manager · **Tables written:** `IDN_OAUTH2_ACCESS_TOKEN`, `IDN_OAUTH2_ACCESS_TOKEN_AUDIT`, `AM_REVOKED_JWT`, plus deletes across `AM_*`, `IDN_*`, `SP_*`, `UM_*` and `REG_*` · **Tables read:** the same
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by revoking a token and deleting a subscription, an application, an API product and an API version, diffing the database after each step.
-
-    - **Revoke:** the token row was **moved** out of `IDN_OAUTH2_ACCESS_TOKEN` into `IDN_OAUTH2_ACCESS_TOKEN_AUDIT`, its two `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` rows were deleted, and one `AM_REVOKED_JWT` row was added.
-    - **Delete subscription:** just the `AM_SUBSCRIPTION` row.
-    - **Delete application:** `AM_APPLICATION`, `AM_APPLICATION_KEY_MAPPING`, `AM_APPLICATION_REGISTRATION`, the app's remaining token and scopes, `IDN_OAUTH_CONSUMER_APPS`, 10 `IDN_OIDC_PROPERTY` rows, `SP_APP`, `SP_INBOUND_AUTH`, `SP_METADATA`, and the app's `UM_HYBRID_ROLE` + `UM_HYBRID_USER_ROLE`.
-    - **Delete product:** its `AM_API` row, its `AM_API_PRODUCT_MAPPING` row and its registry data.
-    - **Delete API 2.0.0:** `AM_API`, `AM_API_DEFAULT_VERSION`, `AM_API_LC_EVENT`, `AM_API_URL_MAPPING` (2), `AM_API_RESOURCE_SCOPE_MAPPING`, the registry artifact and permissions. The shared scope row stayed, because 1.0.0 still used it.
-    - **Delete API 1.0.0 with a live subscription:** refused by APIM with **HTTP 409** ("Cannot remove the API … as active subscriptions exist"), and nothing changed.
-
 ## The flow at a glance
 
 This diagram shows how revoking a JWT reaches every gateway.
@@ -46,7 +36,7 @@ sequenceDiagram
     |---|---|---|---|---|---|
     | `51d3…` | `3427…` | 1790403942044 | -1234 | `JWT` | 2026-09-26 10:57 |
 
-    - That's the real row from the test run. The `SIGNATURE` column held the same short value as the token's `ACCESS_TOKEN` column (the JWT ID), not a long signature string.
+    - The `SIGNATURE` column holds the same short value as the token's `ACCESS_TOKEN` column (the JWT ID), not a long signature string.
     - `EXPIRY_TIMESTAMP` tells the gateway when it can forget the entry, because an expired token is rejected anyway.
     - `TOKEN_TYPE` distinguishes OAuth JWTs from **API keys**. Revoking an API key only ever writes here, because API keys aren't stored anywhere else.
 
@@ -54,7 +44,7 @@ sequenceDiagram
 
 ### Delete a subscription
 
-1. Delete the [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) row. On the test server, that was the only change. Its only child, the legacy [`AM_SUBSCRIPTION_KEY_MAPPING`](../reference/am.md#am_subscription_key_mapping), has `RESTRICT`, so any rows there would have to go first. It was empty.
+1. Delete the [`AM_SUBSCRIPTION`](../reference/am.md#am_subscription) row. Nothing else changes. Its only child, the legacy [`AM_SUBSCRIPTION_KEY_MAPPING`](../reference/am.md#am_subscription_key_mapping), has `RESTRICT`, so any rows there have to be removed first. APIM 3.2.0 doesn't write to that table, so it's normally empty.
 2. With the *Subscription Deletion* workflow on, the row is first set to `SUBS_CREATE_STATE = 'UN_SUBSCRIBE'` and waits for approval.
 
 ### Delete an application
@@ -88,7 +78,7 @@ flowchart LR
 | `AM_GW_API_ARTIFACTS` → `AM_GW_PUBLISHED_API_DETAILS` | logical (API UUID) | Code removes the artifacts, then the details |
 | Registry artifact (`REG_*`) | logical | Code deletes the artifact, docs and definition |
 
-Local scopes of the API live in `IDN_OAUTH2_SCOPE` in 3.2 (not `AM_SCOPE`), and code deletes them when no other version uses them. In the test run, deleting 2.0.0 kept `order:write` because 1.0.0 still used it. Shared scopes (`AM_SHARED_SCOPE`) survive.
+Local scopes of the API live in `IDN_OAUTH2_SCOPE` in 3.2 (not `AM_SCOPE`), and code deletes them when no other version uses them. For example, deleting 2.0.0 keeps `order:write` if 1.0.0 still uses it. Shared scopes (`AM_SHARED_SCOPE`) survive.
 
 ## Try it
 

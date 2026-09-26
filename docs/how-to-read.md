@@ -1,6 +1,6 @@
-# How to read this site
+# How to read this guide
 
-## How the site is organised
+## How the guide is organized
 
 Each series (4.x and 3.x) has the same parts:
 
@@ -12,7 +12,7 @@ Each series (4.x and 3.x) has the same parts:
 | **Core flows** | Stories such as "create an API" or "subscribe", with the tables written at each step. |
 | **Gotchas** | Things that often confuse people. |
 | **Identity Server tables** | Tables APIM inherits from WSO2 Identity Server. They're listed for completeness. |
-| **Table reference** | Every table and every column, generated from the scripts. |
+| **Table reference** | Every table and every column, with keys and relationships. |
 
 ## Reading the table diagrams
 

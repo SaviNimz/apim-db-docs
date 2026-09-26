@@ -102,7 +102,7 @@ erDiagram
 
 ### GOV_REQUEST
 
-**One row =** a queued "please check this artifact" request. It has `REQ_ID`, `ARTIFACT_KEY` (logical), `STATUS` (e.g. pending or processing), `REQ_TIMESTAMP` and `PROCESSING_TIMESTAMP`. (`STATUS`, `ARTIFACT_KEY`) is unique, so an artifact is queued at most once per status. On a 4.7.0 test server, requests were inserted as `PENDING` on API create and update, and **deleted** once the background engine had processed them (verified). [Full column list](../reference/gov.md#gov_request)
+**One row =** a queued "please check this artifact" request. It has `REQ_ID`, `ARTIFACT_KEY` (logical), `STATUS` (e.g. pending or processing), `REQ_TIMESTAMP` and `PROCESSING_TIMESTAMP`. (`STATUS`, `ARTIFACT_KEY`) is unique, so an artifact is queued at most once per status. APIM inserts a `PENDING` request when an API is created or updated, and **deletes** it once the background governance engine has processed it. [Full column list](../reference/gov.md#gov_request)
 
 ### GOV_REQUEST_POLICY
 
@@ -114,7 +114,7 @@ erDiagram
 
 ### GOV_RULESET_RUN
 
-**One row =** the latest result of running ruleset R on artifact A. It has `RESULT` (pass or fail) and `RUN_TIMESTAMP`. (`ARTIFACT_KEY`, `RULESET_ID`) is unique, so only the latest run is kept. Each new run deletes the old row (and its violations) and inserts a new one with a new `RULESET_RUN_ID` (verified). `RESULT` was `0` for a failed run. [Full column list](../reference/gov.md#gov_ruleset_run)
+**One row =** the latest result of running ruleset R on artifact A. It has `RESULT` (pass or fail) and `RUN_TIMESTAMP`. (`ARTIFACT_KEY`, `RULESET_ID`) is unique, so only the latest run is kept. Each new run deletes the old row (and its violations) and inserts a new one with a new `RULESET_RUN_ID`. `RESULT` was `0` for a failed run. [Full column list](../reference/gov.md#gov_ruleset_run)
 
 ### GOV_RULE_VIOLATION
 
@@ -124,7 +124,7 @@ erDiagram
 
 | Table | Row |
 |---|---|
-The seeded default policy and a real check of PizzaShackAPI on a 4.7.0 test server:
+Example: the seeded default policy and a check of PizzaShackAPI:
 
 | Table | Row |
 |---|---|

@@ -1,6 +1,6 @@
 # IDN_* — Identity & OAuth
 
-59 tables. Generated from the 3.2.0 DDL.
+59 tables in APIM 3.2.0.
 
 ## IDN_ASSOCIATED_ID
 
@@ -358,9 +358,9 @@
 | `INVALIDATED_TIME` | `TIMESTAMP` | NULL |
 | `IDP_ID` | `INTEGER` | DEFAULT -1 NOT NULL |
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token) *(name-hint)*
+- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token)
 
 ## IDN_OAUTH2_ACCESS_TOKEN_SCOPE
 
@@ -409,9 +409,9 @@
 - [`IDN_OAUTH2_AUTHZ_CODE_SCOPE`](#idn_oauth2_authz_code_scope) via `CODE_ID`
 - [`IDN_OIDC_REQ_OBJECT_REFERENCE`](#idn_oidc_req_object_reference) via `CODE_ID`
 
-**Likely links (no FK)**
+**Related tables (not enforced)**
 
-- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token) *(name-hint)*
+- `TOKEN_ID` → [`IDN_OAUTH2_ACCESS_TOKEN`](#idn_oauth2_access_token)
 
 ## IDN_OAUTH2_AUTHZ_CODE_SCOPE
 

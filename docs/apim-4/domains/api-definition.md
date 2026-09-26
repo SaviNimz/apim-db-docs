@@ -20,8 +20,8 @@ Every *version* of an API is a separate `AM_API` row. So is every *API product*,
     - `AM_API_URL_MAPPING.REVISION_UUID` is **NULL** for the current API.
     - `AM_API_ENDPOINTS`, `AM_API_PRIMARY_EP_MAPPING`, `AM_API_METADATA` and `AM_API_CLIENT_CERTIFICATE` use the literal text **`'Current API'`** instead.
     - `AM_API_SEQUENCE_BACKEND` uses `'0'`.
-    - `AM_API_AI_CONFIGURATION.API_REVISION_UUID` is **NULL** for the current API (verified).
-    - For **API product** resource copies, `AM_API_URL_MAPPING.REVISION_UUID` holds the *product's* `API_ID` as text (verified). See [Create an API product](../flows/06-api-product.md).
+    - `AM_API_AI_CONFIGURATION.API_REVISION_UUID` is **NULL** for the current API.
+    - For **API product** resource copies, `AM_API_URL_MAPPING.REVISION_UUID` holds the *product's* `API_ID` as text. See [Create an API product](../flows/06-api-product.md).
 
 ## How the tables connect
 
@@ -156,7 +156,7 @@ erDiagram
 
 **One row =** one named backend endpoint of an API (4.x supports several endpoints per API).
 
-**Watch out:** a normal API's default production and sandbox URLs stay in the **registry artifact**. On a 4.7.0 test server, creating a REST API and an AI API wrote **no** row here. The table is used for extra named endpoints, e.g. for AI model routing and failover.
+**Watch out:** a normal API's default production and sandbox URLs stay in the **registry artifact**. Creating a REST API or an AI API writes **no** row here. The table is used for extra named endpoints, e.g. for AI model routing and failover.
 
 | Column | What it means |
 |---|---|
@@ -234,7 +234,7 @@ erDiagram
 
 ## Example
 
-These are real rows from a 4.7.0 test server:
+Example rows:
 
 | Table | Row |
 |---|---|

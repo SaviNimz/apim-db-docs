@@ -1,6 +1,6 @@
 # FIDO2_* — FIDO2 devices
 
-1 tables. Generated from the 4.7.0 DDL.
+1 tables in APIM 4.7.0.
 
 ## FIDO2_DEVICE_STORE
 

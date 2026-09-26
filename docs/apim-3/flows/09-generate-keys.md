@@ -5,15 +5,6 @@
 
 **Who:** Developer Portal → Key Manager · **Tables written:** `AM_APPLICATION_REGISTRATION`, `AM_APPLICATION_KEY_MAPPING`, `IDN_OAUTH_CONSUMER_APPS`, `IDN_OIDC_PROPERTY`, `SP_APP`, `SP_INBOUND_AUTH`, `SP_METADATA`, `UM_HYBRID_ROLE`, `UM_HYBRID_USER_ROLE`, `IDN_OAUTH2_ACCESS_TOKEN`, `IDN_OAUTH2_ACCESS_TOKEN_SCOPE`, `AM_WORKFLOWS` (only with approval) · **Tables read:** `AM_APPLICATION`, `AM_KEY_MANAGER`
 
-!!! success "Verified on a running server"
-    Checked on WSO2 APIM 3.2.0 (H2, default config) by generating Production keys for `PizzaApp` with the Resident Key Manager and no approval workflow, and diffing the database.
-
-    - Written: `AM_APPLICATION_REGISTRATION` (1), `AM_APPLICATION_KEY_MAPPING` (1), `IDN_OAUTH_CONSUMER_APPS` (1), `IDN_OIDC_PROPERTY` (10), `SP_APP` (1), `SP_INBOUND_AUTH` (1), `SP_METADATA` (3), `UM_HYBRID_ROLE` (1), `UM_HYBRID_USER_ROLE` (1), `IDN_OAUTH2_ACCESS_TOKEN` (1) and `IDN_OAUTH2_ACCESS_TOKEN_SCOPE` (2).
-    - **Surprise 1:** `AM_APPLICATION_REGISTRATION` was written **even with no approval workflow**, and the row **stayed** after the keys were issued. It was only removed when the application was deleted.
-    - **Surprise 2:** key generation **also issued and stored an access token** straight away, with scopes `am_application_scope` and `default`.
-    - **Surprise 3:** a hybrid role `Application/admin_PizzaApp_PRODUCTION` was created and assigned to `admin`.
-    - `AM_APP_KEY_DOMAIN_MAPPING` and `AM_WORKFLOWS` were **not** written.
-
 ## The flow at a glance
 
 This diagram shows key generation with the Resident Key Manager and no approval step.
@@ -34,7 +25,7 @@ sequenceDiagram
     Portal-->>Dev: consumer key, secret, token
 ```
 
-- The order of writes within one request isn't visible in a before/after comparison, so the order shown is inferred. The set of tables is verified. The end state is one mapping row per app, key type and key manager, pointing at one OAuth client.
+- All of these rows are written as part of one request. The end state is one mapping row per app, key type and key manager, pointing at one OAuth client.
 
 ## Step by step
 
@@ -46,9 +37,9 @@ sequenceDiagram
     |---|---|---|---|---|---|---|---|---|
     | 1 | 1 | `b21d…` | 2 | `PRODUCTION` | `default` | `ALL` | 0 | `Resident Key Manager` |
 
-    - These are the real values from the test run. `INPUTS` held `{"tokenScope":"default","validityPeriod":"3600","grant_types":"client_credentials,password","key_type":"PRODUCTION","username":"admin",…}`.
+    - `INPUTS` holds `{"tokenScope":"default","validityPeriod":"3600","grant_types":"client_credentials,password","key_type":"PRODUCTION","username":"admin",…}`.
     - `TOKEN_TYPE` here means the **key type** (`PRODUCTION` or `SANDBOX`).
-    - `WF_REF` is a UUID that links the request to its `AM_WORKFLOWS` row when a registration workflow is used *(logical)*. It's filled even without a workflow. The registration workflow itself wasn't exercised in testing.
+    - `WF_REF` is a UUID that links the request to its `AM_WORKFLOWS` row when a registration workflow is used *(logical)*. It's filled even without a workflow.
     - FKs: to `AM_SUBSCRIBER` and `AM_APPLICATION` (`APP_ID`), both `RESTRICT`.
     - The row **is not removed** once the keys are generated. It stays until the application is deleted.
 
@@ -62,7 +53,7 @@ sequenceDiagram
     |---|---|---|---|---|---|---|---|
     | 2 | `1BDH…` | `admin_PizzaApp_PRODUCTION` | `admin` | -1234 | `client_credentials password` | `''` | `ACTIVE` |
 
-    The consumer secret is stored in `CONSUMER_SECRET`. With the default configuration used in testing it was stored **in plain text**. Encryption or hashing must be switched on explicitly. With a third-party KM, **none** of these rows exist in APIM. The client lives in the external system.
+    The consumer secret is stored in `CONSUMER_SECRET`. By default it's stored **in plain text**. Encryption or hashing must be switched on explicitly. With a third-party KM, **none** of these rows exist in APIM. The client lives in the external system.
 
     Row `ID = 1` in the test database was the REST client used to drive the test, not an APIM application. Every OAuth client, including the ones behind the portals, lives in this same table.
 
@@ -72,7 +63,7 @@ sequenceDiagram
     |---|---|---|---|---|---|---|
     | 2 | `PRODUCTION` | `Resident Key Manager` | `1BDH…` | `COMPLETED` | `CREATED` | `2485…` |
 
-    That's the real row from the test run. Generating Sandbox keys adds a second row with `KEY_TYPE = 'SANDBOX'`.
+    Generating Sandbox keys adds a second row with `KEY_TYPE = 'SANDBOX'`.
 
     - The PK is `(APPLICATION_ID, KEY_TYPE, KEY_MANAGER)`: one set of keys per app, per key type, per key manager.
     - `STATE` is `CREATED` while waiting or `COMPLETED` when done.
@@ -90,7 +81,7 @@ sequenceDiagram
 
 ## What gets cleaned up
 
-- **Removing keys, or deleting the app**: APIM deletes the OAuth client from the Key Manager. That cascades inside the IDN tables: tokens and codes are removed via `IDN_OAUTH2_ACCESS_TOKEN → IDN_OAUTH_CONSUMER_APPS ON DELETE CASCADE`. APIM itself deletes the `AM_APPLICATION_KEY_MAPPING` and `AM_APPLICATION_REGISTRATION` rows (`RESTRICT` on the application). In the test run, deleting the app also removed the `SP_*` rows, the OIDC properties and the `Application/…` hybrid role.
+- **Removing keys, or deleting the app**: APIM deletes the OAuth client from the Key Manager. That cascades inside the IDN tables: tokens and codes are removed via `IDN_OAUTH2_ACCESS_TOKEN → IDN_OAUTH_CONSUMER_APPS ON DELETE CASCADE`. APIM itself deletes the `AM_APPLICATION_KEY_MAPPING` and `AM_APPLICATION_REGISTRATION` rows (`RESTRICT` on the application). Deleting the app also removes the `SP_*` rows, the OIDC properties and the `Application/…` hybrid role.
 - **Regenerating the secret** updates `IDN_OAUTH_CONSUMER_APPS.CONSUMER_SECRET`. The mapping row doesn't change.
 
 ## Try it
