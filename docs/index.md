@@ -2,7 +2,7 @@
 
 This guide explains **what WSO2 API Manager (APIM) stores in its database, and why**. It covers what each table is for and how the tables connect. It also shows which rows get written when someone creates an API, subscribes to it, generates keys or calls it.
 
-It's intended for developers, support engineers and database administrators who work with APIM. For the exact columns, see the [table reference](apim-4/reference/index.md).
+For the exact columns, see the [table reference](apim-4/reference/index.md).
 
 <div class="grid cards" markdown>
 
